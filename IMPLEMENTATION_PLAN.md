@@ -1,526 +1,477 @@
-# Portfolio V2 — Vue 3 + Express.js — Implementation Plan
+# Portfolio V3 — Vue 3 + Express.js — Implementation Plan
+
+> Référence design : `./design/project/` — fichiers JSX + CSS à lire avant chaque composant.  
+> Suivi des tâches : `PROGRESS.md`
+
+---
 
 ## Objectif
 
-Repartir de zéro pour construire un portfolio moderne et minimaliste avec :
-- **Frontend** : Vue 3 (Options API) + Vite + Vanilla CSS + Pinia
-- **Backend** : Express.js restructuré en Clean Architecture + SQLite + Zod
-- **Fonctionnalité clé** : Activation/désactivation dynamique des sections du portfolio depuis le backoffice (toggles)
+Portfolio personnel mono-page + backoffice admin avec :
+- **Frontend** : Vue 3 Options API · Vite · Vanilla CSS · Pinia · vue-i18n
+- **Backend** : Express.js Clean Architecture · SQLite synchrone · Zod · JWT
+- **Clé** : Toggles de sections + apparence entièrement configurable depuis l'admin
 
 ---
 
 ## Architecture Monorepo
 
-Monorepo simple avec un `package.json` par côté + script de démarrage à la racine.
-
 ```
 portfolio-3-vue-express/
 ├── backend/
 │   ├── src/
-│   │   ├── config/          # DB connection, env vars, constants
-│   │   ├── middleware/       # auth, validation, error handler, rate-limit
-│   │   ├── routes/          # Express route definitions
-│   │   ├── controllers/     # Thin HTTP handlers
-│   │   ├── services/        # Business logic
-│   │   ├── models/          # SQLite queries (data access layer)
-│   │   ├── migrations/      # SQL migration files
-│   │   └── index.ts         # Express app entry
-│   ├── uploads/             # Local file storage (Multer)
-│   ├── database.sqlite      # SQLite database
+│   │   ├── config/          # database.ts, env.ts
+│   │   ├── middleware/       # auth.ts, validate.ts, errorHandler.ts
+│   │   ├── routes/          # *.routes.ts
+│   │   ├── controllers/     # *.controller.ts
+│   │   ├── services/        # *.service.ts
+│   │   ├── models/          # *.model.ts (synchrones)
+│   │   └── migrations/      # 001_initial.sql, 002_seed.sql
+│   ├── uploads/
+│   ├── .env
 │   ├── package.json
 │   └── tsconfig.json
 ├── frontend/
 │   ├── src/
-│   │   ├── assets/          # Static assets, fonts
+│   │   ├── assets/
 │   │   ├── components/
-│   │   │   ├── ui/          # Reusable UI (Button, Toggle, Card, Modal, Toast...)
-│   │   │   ├── sections/    # Portfolio sections (Hero, About, Skills, Projects...)
-│   │   │   └── admin/       # Admin-specific components
-│   │   ├── composables/     # Shared logic (useApi, useToast, useTheme...)
-│   │   ├── layouts/         # PublicLayout, AdminLayout
-│   │   ├── router/          # Vue Router config
-│   │   ├── stores/          # Pinia stores
-│   │   ├── views/           # Page components
-│   │   │   ├── public/      # HomeView
-│   │   │   └── admin/       # Dashboard, Settings, CRUD views, Messages
-│   │   ├── lib/             # Utils, API client, types
-│   │   ├── i18n/            # vue-i18n setup + static JSON translations (FR/EN)
+│   │   │   ├── ui/          # AppButton, AppToggle, AppModal, AppToast, AppBadge
+│   │   │   ├── sections/    # HeroSection, AboutSection, SkillsSection, ProjectsSection,
+│   │   │   │                #   ExperienceEducationSection, ContactSection
+│   │   │   └── admin/       # Composants admin réutilisables
+│   │   ├── layouts/         # PublicLayout.vue, AdminLayout.vue
+│   │   ├── router/          # index.ts
+│   │   ├── stores/          # auth.ts, settings.ts, messages.ts
+│   │   ├── views/
+│   │   │   ├── public/      # HomeView.vue
+│   │   │   └── admin/       # DashboardView, ProfileView, ProjectsView, ...
+│   │   ├── lib/             # api.ts, types.ts, utils.ts
+│   │   ├── i18n/            # fr.json, en.json, index.ts
 │   │   ├── App.vue
 │   │   ├── main.ts
-│   │   └── style.css        # Vanilla CSS entry + design tokens + themes
-│   ├── index.html
+│   │   └── style.css        # Reset + tokens + 4 thèmes + variants data-*
+│   ├── index.html           # Charge Inter, Fraunces, Playfair, Space Grotesk, JetBrains Mono
 │   ├── package.json
-│   ├── vite.config.ts
-│   └── tsconfig.json
+│   └── vite.config.ts       # Proxy /api → :3000
+├── design/                  # RÉFÉRENCE — lire avant de coder le frontend
 ├── docker/
-│   ├── Dockerfile           # Multi-stage build (frontend build + backend runtime)
-│   └── docker-compose.yml   # Services: app + volumes for uploads/db
-├── start.sh                 # Dev convenience script to start both
-├── ETAT_DES_LIEUX.md
-├── IMPLEMENTATION_PLAN.md
-└── .gitignore
+├── start.sh
+├── CLAUDE.md
+├── PROGRESS.md
+└── IMPLEMENTATION_PLAN.md
 ```
 
 ---
 
-## Phase 1 — Backend (Clean Architecture + Settings + Analytics)
+## Phase 1 — Backend
 
-### Initialisation
-- **Runtime** : Node.js + TypeScript (via `tsx` pour le dev)
-- **Dependencies** : `express`, `better-sqlite3`, `zod`, `jsonwebtoken`, `bcryptjs`, `helmet`, `cors`, `express-rate-limit`, `multer`, `nodemailer`, `dotenv`
+### Dépendances
+```
+express better-sqlite3 zod jsonwebtoken bcryptjs
+helmet cors express-rate-limit multer nodemailer dotenv tsx
+```
+Types : `@types/express @types/better-sqlite3 @types/jsonwebtoken @types/bcryptjs @types/multer`
 
-### Config
-- `src/config/database.ts` — SQLite connection via `better-sqlite3` (synchronous), auto-run migrations on startup
-- `src/config/env.ts` — Zod schema to validate env vars at startup (PORT, JWT_SECRET, SMTP config, ADMIN_USERNAME, ADMIN_PASSWORD pour le seed initial)
+### `src/config/env.ts`
+Zod schema : `PORT`, `JWT_SECRET`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`
 
-### Migration SQL (001_initial.sql)
+### `src/config/database.ts`
+Connexion `better-sqlite3` (synchrone). Auto-run des migrations SQL au démarrage via lecture + exécution séquentielle des fichiers `migrations/*.sql`.
 
-Tables :
-- `users` — id, username, password_hash, created_at
-- `profile` — id, name, title, bio, email, phone, location, avatar_url, cv_url, **available_for_work** (boolean) - **IMPORTANT** available for work peut être lié à linkedin pour que ce soit automatique en fonction du statut likedin
-- `projects` — id, title_fr, title_en, description_fr, description_en, **short_description_fr, short_description_en**, image_url, demo_url, repo_url, technologies, category, sort_order, created_at
-- **`project_images`** — id, project_id (FK), image_url, sort_order *(galerie multi-images pour la modale de détail)*
-- `experiences` — id, company, role_fr, role_en, description_fr, description_en, start_date, end_date, current, sort_order
-- `education` — id, school, degree_fr, degree_en, description_fr, description_en, start_date, end_date, sort_order
-- `skills` — id, name, icon, category_fr, category_en, level, sort_order
-- `translations` — id, lang, key, value
-- **`messages`** — id, name, email, subject, message, **is_read** (boolean, default false), created_at *(messages du formulaire de contact)*
-- **`page_views`** — id, path, user_agent, ip_hash, created_at *(analytics de navigation maison)*
-- **`settings`** — key (PK), value (TEXT). Key-value store pour la configuration :
-  - `section_hero_enabled` → `"true"`
-  - `section_about_enabled` → `"true"`
-  - `section_skills_enabled` → `"true"`
-  - `section_projects_enabled` → `"true"`
-  - `section_experience_enabled` → `"true"`
-  - `section_education_enabled` → `"true"`
-  - `section_contact_enabled` → `"true"`
-  - `site_title` → `"Mon Portfolio"`
-  - `active_theme` → `"sable"` ← thème actif parmi les 4 presets
+### `src/migrations/001_initial.sql`
 
-### Seed SQL (002_seed.sql)
+```sql
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now'))
+);
 
-- Insertion du **compte admin** : username et password hashé depuis les variables d'environnement (`ADMIN_USERNAME`, `ADMIN_PASSWORD`). Pas de route d'inscription.
-- Insertion des **settings par défaut** (toutes les sections activées, thème "sable").
+CREATE TABLE IF NOT EXISTS profile (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT, title TEXT, bio TEXT,
+  email TEXT, phone TEXT, location TEXT,
+  avatar_url TEXT, cv_url TEXT,
+  available_for_work INTEGER DEFAULT 0
+);
 
-### Middleware
-- `auth.ts` — JWT verification
-- `validate.ts` — Generic Zod validation middleware (body, params, query)
-- `errorHandler.ts` — Centralized error handling, consistent JSON responses
+CREATE TABLE IF NOT EXISTS projects (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title_fr TEXT, title_en TEXT,
+  description_fr TEXT, description_en TEXT,
+  short_description_fr TEXT, short_description_en TEXT,
+  image_url TEXT, demo_url TEXT, repo_url TEXT,
+  technologies TEXT,  -- JSON array stringifié
+  category TEXT,      -- 'web' | 'tools' | 'mobile'
+  sort_order INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS project_images (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+  image_url TEXT NOT NULL,
+  sort_order INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS experiences (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  company TEXT, role_fr TEXT, role_en TEXT,
+  description_fr TEXT, description_en TEXT,
+  start_date TEXT, end_date TEXT,
+  current INTEGER DEFAULT 0,
+  sort_order INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS education (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  school TEXT, degree_fr TEXT, degree_en TEXT,
+  description_fr TEXT, description_en TEXT,
+  start_date TEXT, end_date TEXT,
+  sort_order INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS skills (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT, icon TEXT,
+  category_fr TEXT, category_en TEXT,
+  level INTEGER DEFAULT 50,
+  sort_order INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS translations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  lang TEXT NOT NULL,
+  key TEXT NOT NULL,
+  value TEXT NOT NULL,
+  UNIQUE(lang, key)
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT, email TEXT, subject TEXT, message TEXT,
+  is_read INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS page_views (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  path TEXT, user_agent TEXT, ip_hash TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+```
+
+### `src/migrations/002_seed.sql`
+
+```sql
+-- Compte admin (username/password depuis variables d'environnement)
+INSERT OR IGNORE INTO users (username, password_hash)
+VALUES (:username, :password_hash);
+
+-- Settings par défaut
+INSERT OR IGNORE INTO settings VALUES ('section_hero_enabled',       'true');
+INSERT OR IGNORE INTO settings VALUES ('section_about_enabled',      'true');
+INSERT OR IGNORE INTO settings VALUES ('section_skills_enabled',     'true');
+INSERT OR IGNORE INTO settings VALUES ('section_projects_enabled',   'true');
+INSERT OR IGNORE INTO settings VALUES ('section_experience_enabled', 'true');
+INSERT OR IGNORE INTO settings VALUES ('section_education_enabled',  'true');
+INSERT OR IGNORE INTO settings VALUES ('section_contact_enabled',    'true');
+INSERT OR IGNORE INTO settings VALUES ('site_title',                 'Mon Portfolio');
+-- Apparence
+INSERT OR IGNORE INTO settings VALUES ('active_theme',      'sable');
+INSERT OR IGNORE INTO settings VALUES ('active_font',       'mono');
+INSERT OR IGNORE INTO settings VALUES ('density',           'regular');
+INSERT OR IGNORE INTO settings VALUES ('card_style',        'soft');
+INSERT OR IGNORE INTO settings VALUES ('hero_style',        'split');
+INSERT OR IGNORE INTO settings VALUES ('accent_intensity',  'warm');
+```
 
 ### API Routes
 
-| Entity | Public Routes | Admin Routes |
+| Entité | Routes publiques | Routes admin (JWT requis) |
 |---|---|---|
 | **Auth** | — | `POST /api/auth/login` |
 | **Profile** | `GET /api/profile` | `PUT /api/admin/profile` |
-| **Projects** | `GET /api/projects`, `GET /api/projects/:id` | `POST/PUT/DELETE /api/admin/projects`, `POST/DELETE /api/admin/projects/:id/images` |
-| **Experience** | `GET /api/experiences` | `POST/PUT/DELETE /api/admin/experiences` |
-| **Education** | `GET /api/education` | `POST/PUT/DELETE /api/admin/education` |
-| **Skills** | `GET /api/skills` | `POST/PUT/DELETE /api/admin/skills` |
+| **Projects** | `GET /api/projects`, `GET /api/projects/:id` | `POST/PUT/DELETE /api/admin/projects/:id`, `POST/DELETE /api/admin/projects/:id/images` |
+| **Experience** | `GET /api/experiences` | `POST/PUT/DELETE /api/admin/experiences/:id` |
+| **Education** | `GET /api/education` | `POST/PUT/DELETE /api/admin/education/:id` |
+| **Skills** | `GET /api/skills` | `POST/PUT/DELETE /api/admin/skills/:id` |
 | **Translations** | `GET /api/translations/:lang` | `PUT /api/admin/translations` |
-| **Settings** | `GET /api/settings` | `PUT /api/admin/settings` |
+| **Settings** | `GET /api/settings` *(public)* | `PUT /api/admin/settings` |
 | **Contact** | `POST /api/contact` | — |
 | **Messages** | — | `GET /api/admin/messages`, `PUT /api/admin/messages/:id/read`, `DELETE /api/admin/messages/:id` |
-| **Analytics** | `POST /api/track` *(public, rate-limited)* | `GET /api/admin/analytics` *(stats agrégées)* |
-| **Upload** | — | `POST /api/admin/upload` |
+| **Analytics** | `POST /api/track` *(rate-limited, max 1/s/IP)* | `GET /api/admin/analytics` |
+| **Upload** | — | `POST /api/admin/upload` (Multer) |
 
-> `GET /api/settings` est public (le frontend a besoin de savoir quelles sections afficher).
-> `POST /api/track` est public mais fortement rate-limited (max 1 req/s par IP).
-> Tous les endpoints `/api/admin/*` sont protégés par JWT.
+### Middleware
+- `auth.ts` — JWT verification
+- `validate.ts` — Zod middleware générique (body/params/query)
+- `errorHandler.ts` — Réponses d'erreur JSON cohérentes
 
 ### Architecture par entité
-Chaque entité suit le pattern : **Route → Controller → Service → Model**
-- **Route** : Définit les endpoints, applique middleware (auth, validation)
-- **Controller** : Parse la requête, appelle le service, retourne la réponse HTTP
-- **Service** : Logique métier (ex: envoi d'email de notification après réception d'un message)
-- **Model** : Requêtes SQLite (data access layer)
+**Route → Controller → Service → Model**
+
+- **Model** : requêtes SQLite synchrones (`db.prepare(...).get/all/run(...)`)
+- **Service** : logique métier (ex: hash du mot de passe, envoi email Nodemailer)
+- **Controller** : parse req, appelle service, retourne res JSON
+- **Route** : applique middleware auth + validate, monte les controllers
 
 ---
 
 ## Phase 2 — Frontend Scaffolding
 
-> **Design** : Toutes les specs visuelles (maquettes, palettes, composants) sont dans **`./design/`**.  
-> Consulter ce dossier avant d'implémenter tout composant ou section.
+> Référence design : `design/project/styles.css`, `styles-public.css`, `styles-admin.css`, `tweaks.jsx`
 
 ### Initialisation
 ```bash
 npx -y create-vue@latest --ts --router --pinia --eslint --prettier --bare ./frontend
 ```
 
-### Vanilla CSS (pas de Tailwind)
+### Fonts (index.html)
+```html
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+```
 
-Le design repose **entièrement sur du CSS custom** avec des custom properties. Aucun framework CSS.
+### `src/style.css`
 
-- `style.css` : Reset, design tokens (`--color-*`, `--font-*`, `--spacing-*`, `--radius-*`), animations globales, composants de base
-- Chaque composant `.vue` utilise des `<style scoped>` avec les custom properties du thème
+CSS entry-point consolidant :
 
-### Design System — Multi-thème (style.css)
+**Design tokens** (`--font-display`, `--font-sans`, `--radius-*`, `--shadow-*`, `--transition-*`)
 
-Le design repose sur des **CSS custom properties** (`--color-*`). Changer de thème = changer un attribut `data-theme` sur `<html>`, ce qui swap toutes les variables d'un coup.
+**4 thèmes** via `[data-theme]` sur `<html>` :
 
-**Thème par défaut : "Sable"** — palette chaude, douce, beige/terracotta.
+| Clé | Ambiance |
+|---|---|
+| `sable` (défaut) | Crème / Terracotta |
+| `foret` | Vert mousse / menthe |
+| `crepuscule` | Rose poudré / mauve |
+| `papier` | Blanc cassé / encre marine |
 
+Chaque thème déclare :
 ```css
-/* ═══════════════════════════════════════════════
-   RESET + BASE
-   ═══════════════════════════════════════════════ */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+--color-bg-primary, --color-bg-secondary, --color-bg-card, --color-bg-nav
+--color-accent, --color-accent-soft, --color-accent-hover, --color-accent-fg
+--color-text-primary, --color-text-secondary, --color-text-muted
+--color-border, --color-success, --color-error
+--mesh-1, --mesh-2, --mesh-3  /* gradients pour le hero + about portrait */
+```
 
-@font-face {
-  font-family: 'Inter';
-  src: url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-}
+**Variants `data-*`** (appliqués via le settings store sur `<html>`) :
 
-:root {
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --radius-sm: 6px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
-  --radius-full: 9999px;
-  --spacing-xs: 0.25rem;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 2rem;
-  --spacing-xl: 4rem;
-  --shadow-sm: 0 1px 3px oklch(0 0 0 / 0.08);
-  --shadow-md: 0 4px 12px oklch(0 0 0 / 0.1);
-  --shadow-lg: 0 12px 40px oklch(0 0 0 / 0.12);
-  --transition-fast: 150ms ease;
-  --transition-base: 250ms ease;
-  --transition-slow: 400ms ease;
-}
+| Attribut | Valeurs | Effet |
+|---|---|---|
+| `data-theme` | sable/foret/crepuscule/papier | Swap couleurs |
+| `data-type` | fraunces/inter/playfair/mono | Swap `--font-display` + `--font-sans` |
+| `data-density` | compact/regular/comfy | Padding sections + admin |
+| `data-card` | soft/flat/glass | Style des cartes |
+| `data-hero` | split/centered/minimal | Layout et taille du hero |
+| `data-accent` | muted/warm/vivid | Intensité `--color-accent` |
+| `data-available` | 1/0 | Affiche/masque badge "Disponible" |
 
-/* ═══════════════════════════════════════
-   THÈME : Sable (défaut)
-   Palette douce beige / terracotta / crème
-   ═══════════════════════════════════════ */
-:root, [data-theme="sable"] {
-  --color-bg-primary:    oklch(0.97 0.01 80);
-  --color-bg-secondary:  oklch(0.93 0.02 75);
-  --color-bg-card:       oklch(0.95 0.015 78);
-  --color-accent:        oklch(0.58 0.12 35);
-  --color-accent-hover:  oklch(0.52 0.14 30);
-  --color-text-primary:  oklch(0.25 0.02 50);
-  --color-text-secondary:oklch(0.50 0.03 60);
-  --color-border:        oklch(0.85 0.025 70);
-  --color-success:       oklch(0.60 0.15 155);
-  --color-error:         oklch(0.55 0.18 25);
-  --color-bg-nav:        oklch(0.94 0.018 76);
-}
+**Animations** :
+```css
+@keyframes fade-up   { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:none; } }
+@keyframes scale-in  { from { opacity:0; transform:scale(0.96); }     to { opacity:1; transform:none; } }
+@keyframes pulse-dot { 0%,100% { box-shadow: 0 0 0 0 var(--color-success); } 50% { box-shadow: 0 0 0 6px transparent; } }
 
-/* ═══════════════════════════════════════
-   THÈME : Forêt
-   Vert profond / mousse / crème
-   ═══════════════════════════════════════ */
-[data-theme="foret"] {
-  --color-bg-primary:    oklch(0.96 0.015 140);
-  --color-bg-secondary:  oklch(0.92 0.025 145);
-  --color-bg-card:       oklch(0.94 0.02 142);
-  --color-accent:        oklch(0.45 0.12 160);
-  --color-accent-hover:  oklch(0.40 0.14 155);
-  --color-text-primary:  oklch(0.22 0.03 150);
-  --color-text-secondary:oklch(0.48 0.04 148);
-  --color-border:        oklch(0.84 0.03 143);
-  --color-success:       oklch(0.58 0.16 150);
-  --color-error:         oklch(0.55 0.18 25);
-  --color-bg-nav:        oklch(0.93 0.022 141);
-}
-
-/* ═══════════════════════════════════════
-   THÈME : Crépuscule
-   Rose poudré / mauve / gris chaud
-   ═══════════════════════════════════════ */
-[data-theme="crepuscule"] {
-  --color-bg-primary:    oklch(0.96 0.015 340);
-  --color-bg-secondary:  oklch(0.92 0.025 335);
-  --color-bg-card:       oklch(0.94 0.02 338);
-  --color-accent:        oklch(0.55 0.14 350);
-  --color-accent-hover:  oklch(0.50 0.16 345);
-  --color-text-primary:  oklch(0.24 0.02 330);
-  --color-text-secondary:oklch(0.50 0.03 335);
-  --color-border:        oklch(0.85 0.02 338);
-  --color-success:       oklch(0.60 0.15 155);
-  --color-error:         oklch(0.55 0.20 15);
-  --color-bg-nav:        oklch(0.93 0.018 337);
-}
-
-/* ═══════════════════════════════════════
-   THÈME : Minuit
-   Mode sombre élégant, accents cuivrés
-   ═══════════════════════════════════════ */
-[data-theme="minuit"] {
-  --color-bg-primary:    oklch(0.18 0.015 60);
-  --color-bg-secondary:  oklch(0.22 0.018 55);
-  --color-bg-card:       oklch(0.25 0.02 58);
-  --color-accent:        oklch(0.68 0.14 55);
-  --color-accent-hover:  oklch(0.74 0.16 50);
-  --color-text-primary:  oklch(0.92 0.01 70);
-  --color-text-secondary:oklch(0.65 0.02 65);
-  --color-border:        oklch(0.32 0.02 60);
-  --color-success:       oklch(0.65 0.18 150);
-  --color-error:         oklch(0.60 0.22 25);
-  --color-bg-nav:        oklch(0.16 0.012 58);
-}
-
-/* ═══════════════════════════════════════
-   ANIMATIONS — CSS natif (scroll-driven)
-   ═══════════════════════════════════════ */
-@keyframes fade-up {
-  from { opacity: 0; transform: translateY(30px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes scale-in {
-  from { opacity: 0; transform: scale(0.95); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
-.animate-on-scroll {
-  animation: fade-up ease both;
-  animation-timeline: view();
-  animation-range: entry 0% entry 30%;
-}
-
-.animate-scale-on-scroll {
-  animation: scale-in ease both;
-  animation-timeline: view();
-  animation-range: entry 0% entry 30%;
-}
+.fade-up  { animation: fade-up  700ms ease both; }
+.scale-in { animation: scale-in 400ms ease both; }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-on-scroll,
-  .animate-scale-on-scroll {
-    animation: none;
-    opacity: 1;
-    transform: none;
-  }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 ```
 
-**Mécanisme** :
-- Le frontend lit `active_theme` depuis `GET /api/settings` et applique `document.documentElement.dataset.theme = theme`
-- Le store Pinia `settings` expose `currentTheme` et `setTheme()`
-- Tous les composants utilisent les variables CSS `var(--color-*)` → le changement est instantané, zéro rechargement
+### `src/lib/api.ts`
+Client fetch centralisé — base URL (`/api`), injection auto du JWT depuis localStorage, gestion erreurs HTTP.
+
+### `src/lib/types.ts`
+Types TypeScript partagés : `Project`, `Experience`, `Education`, `Skill`, `Message`, `Settings`, `Profile`.
+
+### `src/router/index.ts`
+```
+/            → HomeView           (public)
+/login       → LoginView          (public)
+/admin       → redirect /admin/dashboard
+/admin/*     → AdminLayout + auth guard (lit JWT depuis store auth)
+```
+Routes admin : `dashboard`, `profile`, `projects`, `experience`, `education`, `skills`, `messages`, `translations`, `settings`
 
 ### Stores Pinia
-- `auth.ts` — JWT auth state, login/logout, token persistence (localStorage)
-- `settings.ts` — Fetch `/api/settings`, expose :
-  - `isSectionEnabled(section: string): boolean`
-  - `currentTheme: string` (réactif, applique `data-theme` sur `<html>`)
-  - `setTheme(theme: string)` → met à jour le store + `PUT /api/admin/settings`
-- `messages.ts` — Fetch `/api/admin/messages`, expose `unreadCount` pour le badge sidebar
 
-### Router
-- `/` → HomeView (public portfolio, single page scrollable)
-- `/login` → LoginView
-- `/admin` → AdminLayout (auth guard)
-  - `/admin/dashboard` ← **Stats + graphique de visites**
-  - `/admin/profile`
-  - `/admin/projects`
-  - `/admin/experience`
-  - `/admin/education`
-  - `/admin/skills`
-  - `/admin/translations`
-  - `/admin/messages` ← **Messages de contact (lu/non-lu)**
-  - `/admin/settings` ← **Section toggles + thème**
+**`auth.ts`**
+- `token`, `isAuthenticated`
+- `login(username, password)` → `POST /api/auth/login` → stocke JWT localStorage
+- `logout()` → vide token, redirige `/login`
+
+**`settings.ts`**
+```ts
+// State
+settings: Record<string, string>
+
+// Getters
+isSectionEnabled(section: string): boolean
+currentTheme: string
+currentFont: string
+density: string
+cardStyle: string
+heroStyle: string
+accentIntensity: string
+
+// Actions
+fetchSettings()   // GET /api/settings
+applyToDOM()      // applique tous les data-* sur document.documentElement
+setTheme(v)       // PUT /api/admin/settings + applyToDOM()
+updateSettings(patch: Record<string, string>)  // PUT /api/admin/settings
+```
+
+> `applyToDOM()` applique simultanément `data-theme`, `data-type`, `data-density`, `data-card`, `data-hero`, `data-accent`, et les variables CSS `--font-display`/`--font-sans` via `style.setProperty`.
+
+**`messages.ts`**
+- `unreadCount: number` — expose le badge sidebar
+- `fetchMessages()` → `GET /api/admin/messages`
+
+### Layouts
+
+**`PublicLayout.vue`**
+- Navbar sticky (voir Phase 3)
+- `<slot/>` pour les sections
+- Réhydrate settings au montage (`settings.fetchSettings()` + `settings.applyToDOM()`)
+
+**`AdminLayout.vue`**
+- Sidebar 256px (Pilotage / Contenu / Configuration)
+- Topbar avec breadcrumb + barre de recherche décorative + actions
+- `<slot/>` pour les vues admin
+
+### Composants UI réutilisables
+- `AppButton.vue` — variantes : primary, ghost, icon, sm
+- `AppToggle.vue` — `.toggle` + `.toggle.on` en CSS pur
+- `AppModal.vue` — overlay, trap focus, Escape, slot
+- `AppToast.vue` — `position: fixed`, animation fade-up, auto-dismiss
+- `AppBadge.vue` — chip, chip-neutral, status-dot
 
 ---
 
-## Phase 3 — Public Portfolio (Sections + Animations CSS natives)
+## Phase 3 — Portfolio Public
 
-### HomeView
-Single-page layout avec rendu conditionnel et navbar sticky avec ancres :
+> Référence design : `design/project/public.jsx`, `styles-public.css`
 
+### Navbar
+- Sticky, `backdrop-filter: blur(18px)`
+- Liens d'ancres dynamiques — seules les sections activées apparaissent
+- Badge "Disponible" — masqué si `data-available="0"` (CSS), piloté par `profile.available_for_work`
+- Language switcher FR/EN (store Pinia, persisté localStorage)
+- Bouton icône `lock` → `/login` (admin)
+- IntersectionObserver pour indiquer la section active
+
+### `HomeView.vue`
 ```vue
-<template>
-  <PublicLayout>
-    <HeroSection v-if="settings.isSectionEnabled('hero')" id="hero" />
-    <AboutSection v-if="settings.isSectionEnabled('about')" id="about" />
-    <SkillsSection v-if="settings.isSectionEnabled('skills')" id="skills" />
-    <ProjectsSection v-if="settings.isSectionEnabled('projects')" id="projects" />
-    <ExperienceSection v-if="settings.isSectionEnabled('experience')" id="experience" />
-    <EducationSection v-if="settings.isSectionEnabled('education')" id="education" />
-    <ContactSection v-if="settings.isSectionEnabled('contact')" id="contact" />
-  </PublicLayout>
-</template>
+<PublicLayout>
+  <HeroSection v-if="settings.isSectionEnabled('hero')" id="hero"/>
+  <div v-if="settings.isSectionEnabled('about')" class="section-divider"/>
+  <AboutSection v-if="settings.isSectionEnabled('about')" id="about"/>
+  <div v-if="settings.isSectionEnabled('skills')" class="section-divider"/>
+  <SkillsSection v-if="settings.isSectionEnabled('skills')" id="skills"/>
+  <div v-if="settings.isSectionEnabled('projects')" class="section-divider"/>
+  <ProjectsSection v-if="settings.isSectionEnabled('projects')" id="projects"/>
+  <div v-if="expEduVisible" class="section-divider"/>
+  <ExperienceEducationSection v-if="expEduVisible" id="experience"/>
+  <ContactSection v-if="settings.isSectionEnabled('contact')"/>
+  <Footer/>
+</PublicLayout>
 ```
-
-### Navbar publique
-- **Sticky** en haut de page
-- Liens d'ancres dynamiques (seules les sections activées apparaissent dans la navbar)
-- **Badge "Disponible"** : pastille verte animée à côté du nom/logo si `profile.available_for_work === true`
-- Language switcher (FR/EN)
-- Indicateur de section active au scroll (intersection observer)
+`expEduVisible` = `isSectionEnabled('experience') || isSectionEnabled('education')`
 
 ### Sections
 
-| Component | Design |
+| Composant | Points clés |
 |---|---|
-| `HeroSection.vue` | Full-viewport, animated text reveal (CSS `@keyframes`), gradient mesh background dans les tons du thème, CTA buttons, badge "Disponible" |
-| `AboutSection.vue` | Split layout (photo + bio), subtle parallax via `animation-timeline: scroll()` |
-| `SkillsSection.vue` | Category cards avec skill bars animées au scroll (`animation-timeline: view()`) |
-| `ProjectsSection.vue` | Grid avec hover cards, filter tabs par catégorie, **clic → modale de détail** avec galerie d'images |
-| `ExperienceSection.vue` | Timeline verticale avec scroll-reveal entries (`animate-on-scroll`) |
-| `EducationSection.vue` | Timeline compacte, même style que Experience |
-| `ContactSection.vue` | Formulaire avec validation côté client + envoi vers `POST /api/contact`, liens sociaux |
+| `HeroSection.vue` | `min-height: calc(100vh - 73px)`, `hero-mesh` (radial gradients via `--mesh-*`), `hero-grid` (grille masquée), greeting badge, titre `clamp(3rem, 7vw, 5.5rem)`, meta row (Disponibilité / Stack), animation `fade-up` séquentielle |
+| `AboutSection.vue` | Grid 1fr + 1.3fr, portrait placeholder gradient (`--mesh-1` + `--mesh-3`), stats 3 colonnes |
+| `SkillsSection.vue` | Grid 3 colonnes de cards, skill bars larges 4px — animées **par IntersectionObserver** (width 0 → data-level% au scroll) |
+| `ProjectsSection.vue` | Grid 3 colonnes, filter tabs, card avec aspect-ratio 16/11, click → `ProjectModal` |
+| `ExperienceEducationSection.vue` | **Section unique** avec grid 2 colonnes (exp gauche + edu droite). Si seul `experience` activé → 1 colonne. `timeline` avec `::before` ligne verticale, dot plein si `.current` |
+| `ContactSection.vue` | Grid 1fr + 1.2fr, channels (email/linkedin/github), formulaire `contact-form` avec `POST /api/contact` |
+| `Footer.vue` | Flex space-between, icônes sociales `btn-icon` |
 
-### Modale de détail Projet
-- S'ouvre au clic sur une card projet
-- Contient : titre, description longue, **galerie d'images** (carrousel navigable), technologies, liens demo/repo
-- Fermable via overlay click, touche Escape, bouton X
-- Animation d'entrée/sortie CSS (`scale-in` + `fade`)
+### Modale Projet (`ProjectModal.vue`)
+- Gallery `aspect-ratio: 16/9` avec dots navigables
+- Modal body : chip tag, titre, meta (client/rôle/année), description, techs, boutons demo/repo
+- Fermeture : overlay click, Escape, bouton X
+- Animation : `scale-in 350ms cubic-bezier(.2,.8,.2,1)` à l'entrée
 
-### Animations (100% CSS natif)
-- **Scroll reveals** : CSS `animation-timeline: view()` via la classe `.animate-on-scroll`
-- **Entry animations** : `@keyframes fade-up`, `scale-in` déclenchés au scroll
-- **Hero text reveal** : `@keyframes` séquentiels avec `animation-delay`
-- **Micro-interactions** : CSS `:hover` transitions, card lift (`transform: translateY(-4px)`, `box-shadow` teinté accent)
-- **Smooth scroll** : `scroll-behavior: smooth` sur `html`
-- **Accessibilité** : `prefers-reduced-motion: reduce` désactive toutes les animations
-
-### Analytics tracking
-- Le frontend envoie un `POST /api/track` à chaque navigation (path, user_agent)
-- Debounce pour éviter le spam
-- Pas de cookies, respect RGPD
+### Analytics
+- `POST /api/track` à chaque route change (Vue Router afterEach), debounce 500ms
+- Payload : `{ path, user_agent }`
 
 ---
 
-## Phase 4 — Système Multilingue (i18n)
+## Phase 4 — Multilingue
 
-### Approche hybride
-- **`vue-i18n`** comme moteur de traduction
-- **Fichiers JSON statiques** (bundlés) : `i18n/fr.json`, `i18n/en.json` — contiennent les traductions de l'interface (boutons, labels, titres de section)
-- **API dynamique** : `GET /api/translations/:lang` — permet de surcharger/éditer les traductions depuis l'admin
-- Au chargement, les traductions API sont mergées par-dessus les traductions statiques (les clés API écrasent les clés statiques)
-- **Fallback** : si l'API est indisponible, les traductions statiques sont utilisées
-
-### Composant Language Switcher
-- Bouton FR/EN dans la navbar
-- Store Pinia pour gérer la locale courante (persistée en localStorage)
-
-### Traductions dans l'admin
-- Vue `/admin/translations` : tableau éditable des clés/valeurs par langue
-- Possibilité d'ajouter, modifier, supprimer des traductions
-- Preview en temps réel
+- Setup **vue-i18n** dans `main.ts`
+- `i18n/fr.json` + `i18n/en.json` : traductions statiques de l'interface
+- Au chargement : fetch `GET /api/translations/:lang`, merge par-dessus les JSON statiques
+- Fallback : si API indisponible, JSON statiques seuls
+- Language switcher dans la navbar : store Pinia `locale`, persisté localStorage
+- Toutes les sections utilisent `$t('key')`
 
 ---
 
 ## Phase 5 — Admin Backoffice
 
-### Dashboard (`/admin/dashboard`)
+> Référence design : `design/project/admin.jsx`, `styles-admin.css`
 
-```
-┌──────────────────────────────────────────────────┐
-│  📊  Tableau de Bord                              │
-├──────────────────────────────────────────────────┤
-│                                                  │
-│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐   │
-│  │   12   │ │    5   │ │    3   │ │    7   │   │
-│  │ Projets│ │ Expér. │ │ Msg ✉️ │ │Sections│   │
-│  └────────┘ └────────┘ └────────┘ └────────┘   │
-│                                                  │
-│  📈 Visites (7 derniers jours)                   │
-│  ┌──────────────────────────────────────────┐   │
-│  │  ▁ ▃ ▅ ▇ █ ▆ ▄  (graphique barres/line) │   │
-│  │  L  M  M  J  V  S  D                     │   │
-│  └──────────────────────────────────────────┘   │
-│                                                  │
-│  📬 Derniers messages                            │
-│  ── Jean D. — "Question sur le projet X" (2h)   │
-│  ── Marie L. — "Proposition de mission" (1j)    │
-│                                                  │
-└──────────────────────────────────────────────────┘
-```
+### `AdminLayout.vue`
+- Grid `256px 1fr`
+- **Sidebar** : brand mark (lettre "A"), sections Pilotage / Contenu / Configuration, badge unread sur Messages, pied (avatar initiales + nom + rôle + logout)
+- **Topbar** : breadcrumb, barre de recherche décorative (disabled, `⌘K`), actions (bell icon + avatar)
 
-- **Cards de stats** : nombre de projets, expériences, messages non-lus, sections actives
-- **Graphique de visites** : barres ou courbe pour les 7/30 derniers jours (rendu en CSS/SVG maison ou Canvas simple, pas de lib externe)
-- **Derniers messages** : aperçu des 3 derniers messages reçus
+### `DashboardView.vue`
+- **Stat cards** (grid 4 col) : nb projets, nb expériences, messages non-lus, sections actives
+- **Line chart SVG maison** : polyline lissée + polygon aire + circles dots + labels jours. Données : `GET /api/admin/analytics` (7 derniers jours)
+- **Derniers messages** : 3 derniers, format mini-liste (avatar initiales + nom + sujet + temps relatif)
 
-### SettingsView (`/admin/settings`) — Fonctionnalité clé
+### `SettingsView.vue` — Vue clé
 
-```
-┌──────────────────────────────────────────────────┐
-│  ⚙️  Configuration du Site                       │
-├──────────────────────────────────────────────────┤
-│                                                  │
-│  🎨 Thème du site                                │
-│  ────────────────                                │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
-│  │  ██████  │ │  ██████  │ │  ██████  │ │  ██████  │
-│  │  Sable   │ │  Forêt   │ │Crépuscule│ │  Minuit  │
-│  │  ✓ actif │ │          │ │          │ │          │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘
-│  Cartes de preview avec couleurs du thème.       │
-│  Clic = changement instantané + sauvegarde.      │
-│                                                  │
-│  📋 Sections Visibles                            │
-│  ─────────────────                               │
-│  Hero           [████████ ON ]                   │
-│  À propos       [████████ ON ]                   │
-│  Compétences    [████████ ON ]                   │
-│  Projets        [████████ ON ]                   │
-│  Expérience     [████████ ON ]                   │
-│  Éducation      [        OFF]                   │
-│  Contact        [████████ ON ]                   │
-│                                                  │
-│  🔧 Paramètres généraux                          │
-│  ───────────────────                             │
-│  Titre du site  [________________]               │
-│                                                  │
-│         [ 💾 Sauvegarder ]                       │
-└──────────────────────────────────────────────────┘
-```
+**1. Thème** — 4 cards cliquables avec `theme-swatch` (dégradés via couleurs du thème). Clic → `settings.setTheme(id)`
 
-### MessagesView (`/admin/messages`)
+**2. Typographie** — Radio buttons : `fraunces` (Fraunces + Inter) · `inter` (Inter seul) · `playfair` (Playfair + Inter) · `mono` (Space Grotesk + JetBrains Mono, **défaut**)
 
-```
-┌──────────────────────────────────────────────────┐
-│  ✉️  Messages reçus                    3 non-lus │
-├──────────────────────────────────────────────────┤
-│                                                  │
-│  ● Jean Dupont — jean@mail.com                   │
-│    "Question sur le projet X"                    │
-│    il y a 2 heures                    [🗑️] [👁️] │
-│  ──────────────────────────────────────           │
-│  ● Marie Lambert — marie@mail.com                │
-│    "Proposition de mission freelance"            │
-│    il y a 1 jour                      [🗑️] [👁️] │
-│  ──────────────────────────────────────           │
-│  ○ Pierre Martin — pierre@mail.com               │
-│    "Super portfolio !"                           │
-│    il y a 3 jours                     [🗑️]      │
-│                                                  │
-│  ● = non-lu    ○ = lu                            │
-└──────────────────────────────────────────────────┘
-```
+**3. Mise en page** — Selects/radios pour :
+- `density` : compact / regular / comfy
+- `card_style` : soft / flat / glass
+- `hero_style` : split / centered / minimal
+- `accent_intensity` : muted / warm / vivid
 
-- Liste des messages avec indicateur lu/non-lu
-- Clic pour voir le message complet (expansion inline ou modale)
-- Actions : marquer comme lu, supprimer
-- Badge de notification sur "Messages" dans la sidebar admin (`unreadCount`)
-- **Notification email** : envoi d'un email au propriétaire du portfolio à chaque nouveau message reçu (via Nodemailer)
+**4. Sections visibles** — Toggle rows pour chaque section (hero, about, skills, projects, experience, education, contact)
 
-### Autres vues admin
-Pattern commun pour chaque entité :
-- Table de données avec actions edit/delete
-- Modal ou formulaire inline pour create/edit
-- Validation Zod côté frontend (schémas partagés ou dupliqués)
-- Toast notifications pour feedback
-- **Projets** : gestion des images multiples (upload, réordonnement, suppression)
+**5. Général** — Input titre du site
 
-### Design Admin
-- Sidebar navigation (dark theme, compact)
-- Badge notification sur "Messages" (nombre non-lus)
-- Top bar avec info utilisateur + logout
-- Style minimaliste et cohérent avec le portfolio public (utilise les mêmes `--color-*`)
+Bouton "Sauvegarder" → `PUT /api/admin/settings` → `settings.applyToDOM()`
+
+### Autres vues admin (pattern commun)
+
+Table données + bouton "Nouveau" → AppModal create/edit + validation Zod client + AppToast feedback.
+
+- `ProjectsView.vue` : CRUD + upload images multiples par projet
+- `ExperienceView.vue`, `EducationView.vue`, `SkillsView.vue` : CRUD simple
+- `MessagesView.vue` : liste avec dot unread/read, expansion inline (clic sur ligne), actions marquer lu + supprimer, badge count dans sidebar
+- `TranslationsView.vue` : tableau éditable clé/valeur, tabs FR/EN
+- `ProfileView.vue` : formulaire profil + upload avatar + upload CV + toggle `available_for_work`
 
 ---
 
 ## Phase 6 — Docker & Déploiement
 
-### Dockerfile (multi-stage)
+### `docker/Dockerfile` (multi-stage)
 ```dockerfile
-# Stage 1: Build frontend
 FROM node:20-alpine AS frontend-build
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
@@ -528,89 +479,40 @@ RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
-# Stage 2: Backend runtime
 FROM node:20-alpine
 WORKDIR /app
 COPY backend/package*.json ./
 RUN npm ci --production
-COPY backend/ ./
+COPY backend/src ./src
 COPY --from=frontend-build /app/frontend/dist ./public
 EXPOSE 3000
-CMD ["node", "--import", "tsx", "src/index.ts"]
+CMD ["node", "--import", "tsx/esm", "src/index.ts"]
 ```
 
-### docker-compose.yml
+### `docker/docker-compose.yml`
 ```yaml
-version: '3.8'
 services:
   portfolio:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-    ports:
-      - "3000:3000"
+    build: { context: .., dockerfile: docker/Dockerfile }
+    ports: ["3000:3000"]
     volumes:
       - ./data/database.sqlite:/app/database.sqlite
       - ./data/uploads:/app/uploads
-    env_file:
-      - .env
+    env_file: [.env]
     restart: unless-stopped
 ```
 
-### En production
-- Express sert le frontend buildé depuis `./public` (SPA fallback)
-- Express sert les uploads depuis `./uploads` en statique
-- SQLite et uploads persistés via Docker volumes
-- Variables d'environnement via `.env`
+En production : Express sert `./public` (SPA fallback) + `./uploads` en statique.
 
 ---
 
-## Design Philosophy
+## Ordre d'implémentation
 
-### Palette de couleurs — Douce et Originale
-Pas de bleu/violet/noir générique. Chaque thème est **chaud, doux et épuré** :
+1. **Phase 1** — Backend complet + tests API manuels (curl / Insomnia)
+2. **Phase 2** — Scaffolding + `style.css` + stores + router + layouts + composants UI
+3. **Phase 3** — Sections publiques + modale projet + analytics (vérifier dans navigateur)
+4. **Phase 4** — i18n hybride + language switcher
+5. **Phase 5** — Admin backoffice (commencer par dashboard + settings + messages)
+6. **Phase 6** — Docker + tests de build
 
-| Thème | Ambiance | Bg | Accent | Texte |
-|---|---|---|---|---|
-| **Sable** (défaut) | Crème / Terracotta | Ivoire chaud | Terracotta rosé | Brun doux |
-| **Forêt** | Menthe / Mousse | Vert pâle | Vert forêt | Vert nuit |
-| **Crépuscule** | Rose / Mauve | Rose poudré | Mauve profond | Aubergine |
-| **Minuit** | Sombre / Cuivré | Noir chaud | Or cuivré | Ivoire |
-
-Tous les thèmes utilisent l'espace couleur **oklch** pour des dégradés naturels et harmonieux.
-
-### Système de thème
-- 4 presets disponibles, extensibles facilement (ajouter un bloc `[data-theme="..."]` dans le CSS)
-- Changement instantané depuis le backoffice via `data-theme` sur `<html>`
-- Le thème actif est persisté en base (`settings.active_theme`)
-- Possibilité d'ajouter de nouveaux thèmes sans toucher au code des composants
-
-### Typography
-- **Google Font** : Inter (variable weight, 400/500/600/700)
-- **Headings** : Font-weight 700, letter-spacing -0.02em
-- **Body** : Font-weight 400, line-height 1.6
-
-### Key Design Elements
-- Cards avec ombres douces et bords arrondis (effet glassmorphism subtil sur thème Minuit uniquement)
-- Hero background avec dégradé mesh dans les tons du thème actif
-- Smooth scroll (`scroll-behavior: smooth`)
-- Section dividers avec lignes gradient discrètes
-- Hover-lift doux sur les cards (`transform: translateY(-4px)`, `box-shadow` teinté accent)
-- **Badge "Disponible"** : pastille verte animée (pulse) dans la navbar à côté du nom
-
----
-
-## Plan d'Implémentation (Ordre)
-
-1. **Phase 1** : Backend complet (Clean Architecture, toutes les tables, API, seed admin) + tests API manuels
-2. **Phase 2** : Frontend scaffolding + design system Vanilla CSS + thèmes + stores Pinia
-   - Référence : `./design/` pour toutes les specs visuelles
-3. **Phase 3** : Sections publiques + animations CSS natives + modale projets + tracking analytics
-   - Référence : `./design/` pour le design de chaque section
-4. **Phase 4** : Système multilingue hybride (vue-i18n + API)
-5. **Phase 5** : Admin backoffice (dashboard avec graphique, settings toggles, messages, CRUD)
-   - Référence : `./design/` pour le design de l'admin
-6. **Phase 6** : Docker + docker-compose + script de démarrage
-7. **Vérification** : Test end-to-end du flux complet (toggle sections, changement thème, envoi message, analytics)
-
-> Suivre l'avancement tâche par tâche dans **`PROGRESS.md`**.
+> Avancement tâche par tâche dans **`PROGRESS.md`**.

@@ -1,80 +1,115 @@
 # CLAUDE.md — Portfolio V3 Vue + Express
 
-## Stack & Architecture
+## Stack
 
-Monorepo : `backend/` + `frontend/` à la racine.
-
-### Backend
-- Node.js + TypeScript (`tsx` pour le dev, synchrone)
-- Express.js — Clean Architecture : **Route → Controller → Service → Model**
-- SQLite via `better-sqlite3` (**synchrone** — jamais d'async/await dans les models)
-- Zod pour la validation des entrées et des variables d'environnement
-- JWT (`jsonwebtoken`) pour l'authentification admin
-
-### Frontend
-- Vue 3 — **Options API uniquement** (jamais de `<script setup>` ni Composition API)
-- Vite
-- Vanilla CSS — custom properties (`--color-*`, `--spacing-*`, `--radius-*`, etc.)
-- Pinia pour le state global
-- vue-i18n pour le multilingue (hybride : JSON statiques + API)
+| Côté | Techno |
+|---|---|
+| Frontend | Vue 3 Options API · Vite · Vanilla CSS · Pinia · vue-i18n |
+| Backend | Express.js · TypeScript (tsx) · SQLite (better-sqlite3) · Zod · JWT |
 
 ---
 
-## Contraintes absolues
+## Contraintes absolues — ne jamais violer
 
-Ne jamais violer ces règles, même si une lib semble plus rapide :
-
-| Interdit | Alternatif obligatoire |
+| Interdit | Alternatif |
 |---|---|
 | Tailwind CSS ou tout framework CSS | Vanilla CSS + custom properties |
 | `<script setup>` / Composition API | Options API (`data()`, `methods`, `computed`, `watch`) |
-| GSAP, Motion for Vue, toute lib d'animation | CSS natif (`@keyframes`, `animation-timeline: view()`) |
-| Chart.js, D3, ou toute lib graphique | SVG ou Canvas maison |
-| `async/await` dans `backend/src/models/` | `better-sqlite3` est synchrone, appels directs |
+| GSAP, Motion for Vue, toute lib animation | CSS natif (`@keyframes`, transitions) |
+| Chart.js, D3 ou toute lib graphique | SVG ou Canvas maison |
+| `async/await` dans `backend/src/models/` | `better-sqlite3` est synchrone — appels directs |
 | Route d'inscription admin | Compte créé via `002_seed.sql` uniquement |
 
 ---
 
 ## Design
 
-Les spécifications visuelles (maquettes, palettes, specs de composants) sont dans **`./design/`**.
+Tout le design est dans **`./design/project/`** :
+- `styles.css` — tokens, 4 thèmes, animations globales
+- `styles-public.css` — composants publics (nav, hero, sections, modal)
+- `styles-admin.css` — composants admin (sidebar, table, chart, settings)
+- `public.jsx` — structure des composants publics
+- `admin.jsx` — structure des composants admin
+- `data.jsx` — mock data + icônes SVG + sectionsList
 
-Avant d'implémenter tout composant ou section frontend, consulter le fichier correspondant dans `./design/`. Le CSS doit coller aux specs — couleurs, espacements, typographie.
-
----
-
-## Thèmes CSS
-
-4 thèmes déclarés dans `frontend/src/style.css` via `[data-theme]` sur `<html>` :
-
-| Clé | Ambiance |
-|---|---|
-| `sable` (défaut) | Crème / Terracotta |
-| `foret` | Vert mousse |
-| `crepuscule` | Rose / Mauve |
-| `minuit` | Sombre / Cuivré (glassmorphism subtil) |
-
-Tous les composants utilisent `var(--color-*)` — jamais de couleurs hardcodées. Le changement de thème est instantané (swap de `data-theme`, zéro rechargement).
+Lire le fichier correspondant **avant** d'implémenter tout composant.
 
 ---
 
-## Commandes de développement
+## Système de thèmes et d'apparence
+
+Le frontend applique des `data-*` sur `<html>` à partir des settings lus en DB. Tout le style découle du CSS sans JavaScript supplémentaire.
+
+| Attribut | Valeurs | Défaut |
+|---|---|---|
+| `data-theme` | sable / foret / crepuscule / papier | sable |
+| `data-type` | fraunces / inter / playfair / mono | mono |
+| `data-density` | compact / regular / comfy | regular |
+| `data-card` | soft / flat / glass | soft |
+| `data-hero` | split / centered / minimal | split |
+| `data-accent` | muted / warm / vivid | warm |
+| `data-available` | 1 / 0 | depuis `profile.available_for_work` |
+
+Le store `settings.ts` expose `applyToDOM()` qui écrit tous ces attributs + les CSS vars `--font-display` et `--font-sans` via `style.setProperty`.
+
+### Variables CSS par thème
+```
+--color-bg-primary    --color-bg-secondary  --color-bg-card  --color-bg-nav
+--color-accent        --color-accent-soft   --color-accent-hover  --color-accent-fg
+--color-text-primary  --color-text-secondary  --color-text-muted
+--color-border        --color-success        --color-error
+--mesh-1  --mesh-2  --mesh-3
+```
+
+### Fonts chargées (index.html)
+Fraunces · Inter · JetBrains Mono · Playfair Display · Space Grotesk
+
+---
+
+## Architecture backend
+
+**Route → Controller → Service → Model**
+
+- `models/` : requêtes SQLite synchrones (`db.prepare(...).get/all/run(...)`) — pas d'async
+- `services/` : logique métier (ex: `bcrypt.hash`, `nodemailer.sendMail`)
+- `controllers/` : parse req → appelle service → retourne res JSON
+- `routes/` : applique middleware `auth` + `validate(schema)` → monte controller
+
+### Settings DB (table key-value)
+```
+section_hero_enabled, section_about_enabled, section_skills_enabled,
+section_projects_enabled, section_experience_enabled, section_education_enabled,
+section_contact_enabled, site_title,
+active_theme, active_font, density, card_style, hero_style, accent_intensity
+```
+
+---
+
+## Architecture frontend notable
+
+### Experience + Education : composant fusionné
+`ExperienceEducationSection.vue` affiche les deux timelines côte à côte. S'il n'y a qu'une des deux activées, une seule colonne. Si les deux sont désactivées, la section est masquée depuis `HomeView`.
+
+### Skill bars : IntersectionObserver
+Les barres démarrent à `width: 0`, elles s'animent (`transition: width 1.2s`) quand `.skills-cat` entre dans le viewport. Pas de lib d'animation.
+
+### Admin search bar
+La barre de recherche dans la topbar admin est **décorative** (input `disabled`). Non fonctionnelle v1.
+
+### Chart Dashboard
+SVG maison : polyline (ligne) + polygon (aire) + circles (dots) + text (labels). Données de `GET /api/admin/analytics`.
+
+---
+
+## Commandes
 
 ```bash
-# Depuis la racine — lance backend + frontend en parallèle
-./start.sh
-
-# Backend seul (port 3000)
+./start.sh              # Lance backend (:3000) + frontend (:5173) en parallèle
 cd backend && npm run dev
-
-# Frontend seul (port 5173)
 cd frontend && npm run dev
 ```
 
-## Variables d'environnement
-
-Fichier `backend/.env` (non commité) :
-
+### Variables d'environnement — `backend/.env`
 ```
 PORT=3000
 JWT_SECRET=
@@ -88,69 +123,10 @@ SMTP_PASS=
 
 ---
 
-## Migrations SQLite
-
-Fichiers dans `backend/src/migrations/`, exécutés automatiquement au démarrage :
-
-- `001_initial.sql` — Création de toutes les tables
-- `002_seed.sql` — Compte admin + settings par défaut (toutes sections ON, thème `sable`)
-
----
-
 ## Flux de travail
 
-1. Consulter `PROGRESS.md` — vérifier où on en est et quelle tâche prendre
-2. Consulter `./design/` — lire les specs avant de coder le frontend
-3. Implémenter la tâche
-4. Tester manuellement (les deux serveurs doivent tourner)
-5. Mettre à jour `PROGRESS.md` — cocher la tâche
-
----
-
-## Structure du projet
-
-```
-portfolio-3-vue-express/
-├── backend/
-│   ├── src/
-│   │   ├── config/          # database.ts, env.ts
-│   │   ├── middleware/       # auth.ts, validate.ts, errorHandler.ts, rateLimit.ts
-│   │   ├── routes/          # *.routes.ts
-│   │   ├── controllers/     # *.controller.ts — handlers HTTP fins
-│   │   ├── services/        # *.service.ts — logique métier
-│   │   ├── models/          # *.model.ts — requêtes SQLite synchrones
-│   │   └── migrations/      # 001_initial.sql, 002_seed.sql
-│   ├── uploads/             # Fichiers uploadés (Multer)
-│   ├── .env
-│   ├── package.json
-│   └── tsconfig.json
-├── frontend/
-│   ├── src/
-│   │   ├── assets/
-│   │   ├── components/
-│   │   │   ├── ui/          # Button, Toggle, Card, Modal, Toast, ...
-│   │   │   ├── sections/    # HeroSection, AboutSection, SkillsSection, ...
-│   │   │   └── admin/       # Composants spécifiques à l'admin
-│   │   ├── layouts/         # PublicLayout.vue, AdminLayout.vue
-│   │   ├── router/          # index.ts — routes publiques + admin guard
-│   │   ├── stores/          # auth.ts, settings.ts, messages.ts
-│   │   ├── views/
-│   │   │   ├── public/      # HomeView.vue
-│   │   │   └── admin/       # DashboardView, SettingsView, ...
-│   │   ├── lib/             # api.ts, types.ts, utils.ts
-│   │   ├── i18n/            # fr.json, en.json, index.ts
-│   │   ├── App.vue
-│   │   ├── main.ts
-│   │   └── style.css        # Reset + design tokens + 4 thèmes
-│   ├── index.html
-│   ├── package.json
-│   └── vite.config.ts
-├── design/                  # Maquettes et specs (référence frontend)
-├── docker/
-│   ├── Dockerfile
-│   └── docker-compose.yml
-├── start.sh
-├── CLAUDE.md                # Ce fichier
-├── PROGRESS.md
-└── IMPLEMENTATION_PLAN.md
-```
+1. Consulter `PROGRESS.md` — trouver la prochaine tâche
+2. Lire le fichier `design/project/*.jsx|css` correspondant
+3. Implémenter
+4. Tester dans le navigateur (les deux serveurs actifs)
+5. Cocher dans `PROGRESS.md`
