@@ -77,7 +77,7 @@ portfolio-3-vue-express/
 
 Tables :
 - `users` — id, username, password_hash, created_at
-- `profile` — id, name, title, bio, email, phone, location, avatar_url, cv_url, **available_for_work** (boolean)
+- `profile` — id, name, title, bio, email, phone, location, avatar_url, cv_url, **available_for_work** (boolean) - **IMPORTANT** available for work peut être lié à linkedin pour que ce soit automatique en fonction du statut likedin
 - `projects` — id, title_fr, title_en, description_fr, description_en, **short_description_fr, short_description_en**, image_url, demo_url, repo_url, technologies, category, sort_order, created_at
 - **`project_images`** — id, project_id (FK), image_url, sort_order *(galerie multi-images pour la modale de détail)*
 - `experiences` — id, company, role_fr, role_en, description_fr, description_en, start_date, end_date, current, sort_order
@@ -138,6 +138,9 @@ Chaque entité suit le pattern : **Route → Controller → Service → Model**
 ---
 
 ## Phase 2 — Frontend Scaffolding
+
+> **Design** : Toutes les specs visuelles (maquettes, palettes, composants) sont dans **`./design/`**.  
+> Consulter ce dossier avant d'implémenter tout composant ou section.
 
 ### Initialisation
 ```bash
@@ -601,8 +604,13 @@ Tous les thèmes utilisent l'espace couleur **oklch** pour des dégradés nature
 
 1. **Phase 1** : Backend complet (Clean Architecture, toutes les tables, API, seed admin) + tests API manuels
 2. **Phase 2** : Frontend scaffolding + design system Vanilla CSS + thèmes + stores Pinia
+   - Référence : `./design/` pour toutes les specs visuelles
 3. **Phase 3** : Sections publiques + animations CSS natives + modale projets + tracking analytics
+   - Référence : `./design/` pour le design de chaque section
 4. **Phase 4** : Système multilingue hybride (vue-i18n + API)
 5. **Phase 5** : Admin backoffice (dashboard avec graphique, settings toggles, messages, CRUD)
+   - Référence : `./design/` pour le design de l'admin
 6. **Phase 6** : Docker + docker-compose + script de démarrage
 7. **Vérification** : Test end-to-end du flux complet (toggle sections, changement thème, envoi message, analytics)
+
+> Suivre l'avancement tâche par tâche dans **`PROGRESS.md`**.
