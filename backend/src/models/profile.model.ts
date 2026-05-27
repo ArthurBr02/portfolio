@@ -5,6 +5,7 @@ export interface Profile {
   name: string | null;
   title: string | null;
   bio: string | null;
+  bio_en: string | null;
   email: string | null;
   phone: string | null;
   location: string | null;

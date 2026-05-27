@@ -42,9 +42,15 @@
               <input v-model="form.title" type="text" />
             </div>
           </div>
-          <div>
-            <label class="field-label">Bio</label>
-            <textarea v-model="form.bio" rows="4" style="resize: vertical" />
+          <div class="form-row">
+            <div>
+              <label class="field-label">Bio (FR)</label>
+              <textarea v-model="form.bio" rows="4" style="resize: vertical; width: 100%" />
+            </div>
+            <div>
+              <label class="field-label">Bio (EN)</label>
+              <textarea v-model="form.bio_en" rows="4" style="resize: vertical; width: 100%" />
+            </div>
           </div>
           <div class="form-row">
             <div>
@@ -121,7 +127,7 @@ export default defineComponent({
   components: { AppToast },
   data() {
     return {
-      form: { name: '', title: '', bio: '', email: '', phone: '', location: '', avatar_url: '', cv_url: '', linkedin_url: '', github_url: '', available_for_work: 0 } as Partial<Profile>,
+      form: { name: '', title: '', bio: '', bio_en: '', email: '', phone: '', location: '', avatar_url: '', cv_url: '', linkedin_url: '', github_url: '', available_for_work: 0 } as Partial<Profile>,
       pwForm: { current_password: '', new_password: '', confirm_password: '' },
       saving: false,
       savingPw: false,

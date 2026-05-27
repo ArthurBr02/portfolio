@@ -40,11 +40,13 @@ export default defineComponent({
     projectCount: { type: Number, default: 0 },
     experienceCount: { type: Number, default: 0 },
     experiences: { type: Array as () => Experience[], default: () => [] },
+    locale: { type: String, default: 'fr' },
   },
   computed: {
     paragraphs(): string[] {
-      if (!this.profile?.bio) return [];
-      return this.profile.bio.split('\n').filter(Boolean);
+      const text = this.locale === 'en' ? (this.profile?.bio_en || this.profile?.bio) : this.profile?.bio;
+      if (!text) return [];
+      return text.split('\n').filter(Boolean);
     },
     yearsExp(): number {
       const dates = this.experiences

@@ -9,6 +9,7 @@
       :project-count="projects.length"
       :experience-count="experiences.length"
       :experiences="experiences"
+      :locale="locale"
     />
 
     <div v-if="settings.isSectionEnabled('skills')" class="section-divider" />
