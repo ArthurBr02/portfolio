@@ -342,3 +342,5 @@ dist
 
 # Angular
 .angular/
+
+dump.sql
