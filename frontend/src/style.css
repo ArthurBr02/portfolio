@@ -1433,6 +1433,25 @@ input:focus, textarea:focus, select:focus {
 .tbl tr:last-child td { border-bottom: none; }
 .tbl tr:hover td { background: var(--color-bg-secondary); }
 .tbl-actions { display: flex; gap: 0.25rem; justify-content: end; }
+.tbl th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+.tbl th.sortable::after {
+  content: ' ⇅';
+  opacity: 0.3;
+  font-size: 0.75em;
+  transition: opacity 0.15s;
+}
+.tbl th.sortable:hover {
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+.tbl th.sortable:hover::after { opacity: 0.6; }
+.tbl th.sort-asc::after { content: ' ↑'; color: var(--color-accent); opacity: 1; }
+.tbl th.sort-desc::after { content: ' ↓'; color: var(--color-accent); opacity: 1; }
 
 /* ═══════════════════════════════════════
    ADMIN — Forms
