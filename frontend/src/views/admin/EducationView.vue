@@ -10,9 +10,14 @@
 
     <div class="panel">
       <table class="tbl">
-        <thead><tr><th>Diplôme</th><th>École</th><th>Période</th><th style="text-align:right">Actions</th></tr></thead>
+        <thead><tr>
+          <th :class="['sortable', sortKey === 'degree_fr' ? 'sort-' + sortDir : '']" @click="setSort('degree_fr')">Diplôme</th>
+          <th :class="['sortable', sortKey === 'school' ? 'sort-' + sortDir : '']" @click="setSort('school')">École</th>
+          <th :class="['sortable', sortKey === 'start_date' ? 'sort-' + sortDir : '']" @click="setSort('start_date')">Période</th>
+          <th style="text-align:right">Actions</th>
+        </tr></thead>
         <tbody>
-          <tr v-for="item in filtered" :key="item.id">
+          <tr v-for="item in sorted" :key="item.id">
             <td><strong>{{ item.degree_fr }}</strong></td>
             <td>{{ item.school }}</td>
             <td style="font-family:ui-monospace,monospace;font-size:0.82rem">{{ item.start_date }} — {{ item.end_date }}</td>
@@ -66,7 +71,7 @@ const empty = () => ({ school: '' as string | null, degree_fr: '' as string | nu
 export default defineComponent({
   name: 'EducationView',
   components: { AppModal, AppToast },
-  data() { return { items: [] as Education[], search: '', showModal: false, editing: null as Education | null, form: empty(), saving: false, toast: '' }; },
+  data() { return { items: [] as Education[], search: '', sortKey: 'start_date' as string, sortDir: 'desc' as 'asc' | 'desc', showModal: false, editing: null as Education | null, form: empty(), saving: false, toast: '' }; },
   computed: {
     filtered(): Education[] {
       const q = this.search.toLowerCase().trim();
@@ -77,10 +82,23 @@ export default defineComponent({
         (i.school || '').toLowerCase().includes(q)
       );
     },
+    sorted(): Education[] {
+      const list = [...this.filtered];
+      const k = this.sortKey as keyof Education;
+      return list.sort((a, b) => {
+        const av = String(a[k] ?? '');
+        const bv = String(b[k] ?? '');
+        return this.sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+      });
+    },
   },
   async mounted() { await this.load(); },
   methods: {
     async load() { this.items = await api.get<Education[]>('/education'); },
+    setSort(key: string) {
+      if (this.sortKey === key) this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+      else { this.sortKey = key; this.sortDir = 'asc'; }
+    },
     openCreate() { this.editing = null; this.form = empty(); this.showModal = true; },
     openEdit(item: Education) { this.editing = item; this.form = { ...empty(), ...item }; this.showModal = true; },
     async saveItem() {

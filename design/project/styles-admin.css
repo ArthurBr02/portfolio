@@ -498,6 +498,10 @@
   user-select: none;
 }
 .tbl-actions { display: flex; gap: 0.25rem; justify-content: end; }
+.tbl th.sortable { cursor: pointer; user-select: none; }
+.tbl th.sortable:hover { color: var(--color-text-secondary); }
+.tbl th.sort-asc::after { content: ' ↑'; color: var(--color-accent); }
+.tbl th.sort-desc::after { content: ' ↓'; color: var(--color-accent); }
 
 /* ═══════════════ Forms / form sections ═══════════════ */
 .form-section {

@@ -10,9 +10,14 @@
 
     <div class="panel">
       <table class="tbl">
-        <thead><tr><th>Rôle</th><th>Entreprise</th><th>Période</th><th style="text-align:right">Actions</th></tr></thead>
+        <thead><tr>
+          <th :class="['sortable', sortKey === 'role_fr' ? 'sort-' + sortDir : '']" @click="setSort('role_fr')">Rôle</th>
+          <th :class="['sortable', sortKey === 'company' ? 'sort-' + sortDir : '']" @click="setSort('company')">Entreprise</th>
+          <th :class="['sortable', sortKey === 'start_date' ? 'sort-' + sortDir : '']" @click="setSort('start_date')">Période</th>
+          <th style="text-align:right">Actions</th>
+        </tr></thead>
         <tbody>
-          <tr v-for="item in filtered" :key="item.id">
+          <tr v-for="item in sorted" :key="item.id">
             <td><strong>{{ item.role_fr }}</strong></td>
             <td>{{ item.company }}</td>
             <td style="font-family: ui-monospace, monospace; font-size: 0.82rem">{{ item.start_date }} — {{ item.current ? 'Présent' : item.end_date }}</td>
@@ -76,7 +81,7 @@ export default defineComponent({
   name: 'ExperienceView',
   components: { AppModal, AppToast },
   data() {
-    return { items: [] as Experience[], search: '', showModal: false, editing: null as Experience | null, form: empty(), saving: false, toast: '' };
+    return { items: [] as Experience[], search: '', sortKey: 'start_date' as string, sortDir: 'desc' as 'asc' | 'desc', showModal: false, editing: null as Experience | null, form: empty(), saving: false, toast: '' };
   },
   computed: {
     filtered(): Experience[] {
@@ -88,10 +93,23 @@ export default defineComponent({
         (i.company || '').toLowerCase().includes(q)
       );
     },
+    sorted(): Experience[] {
+      const list = [...this.filtered];
+      const k = this.sortKey as keyof Experience;
+      return list.sort((a, b) => {
+        const av = String(a[k] ?? '');
+        const bv = String(b[k] ?? '');
+        return this.sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+      });
+    },
   },
   async mounted() { await this.load(); },
   methods: {
     async load() { this.items = await api.get<Experience[]>('/experiences'); },
+    setSort(key: string) {
+      if (this.sortKey === key) this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+      else { this.sortKey = key; this.sortDir = 'asc'; }
+    },
     openCreate() { this.editing = null; this.form = empty(); this.showModal = true; },
     openEdit(item: Experience) { this.editing = item; this.form = { ...empty(), ...item }; this.showModal = true; },
     async saveItem() {

@@ -25,9 +25,9 @@
         <table class="tbl" v-if="filteredUe(edu.id).length">
           <thead>
             <tr>
-              <th>Semestre</th>
-              <th>Code</th>
-              <th>Nom</th>
+              <th :class="['sortable', sortKey === 'semester' ? 'sort-' + sortDir : '']" @click="setSort('semester')">Semestre</th>
+              <th :class="['sortable', sortKey === 'code' ? 'sort-' + sortDir : '']" @click="setSort('code')">Code</th>
+              <th :class="['sortable', sortKey === 'name' ? 'sort-' + sortDir : '']" @click="setSort('name')">Nom</th>
               <th>Description</th>
               <th style="text-align:right">Actions</th>
             </tr>
@@ -113,6 +113,8 @@ export default defineComponent({
       educations: [] as Education[],
       ueByEducation: {} as Record<number, EducationUe[]>,
       search: '',
+      sortKey: 'semester' as string,
+      sortDir: 'asc' as 'asc' | 'desc',
       showModal: false,
       editing: null as EducationUe | null,
       form: emptyForm(),
@@ -146,16 +148,25 @@ export default defineComponent({
       this.ueByEducation = map;
     },
 
+    setSort(key: string) {
+      if (this.sortKey === key) this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+      else { this.sortKey = key; this.sortDir = 'asc'; }
+    },
     filteredUe(educationId: number): EducationUe[] {
       const list = this.ueByEducation[educationId] || [];
       const q = this.search.toLowerCase().trim();
-      if (!q) return list;
-      return list.filter(ue =>
+      const filtered = !q ? list : list.filter(ue =>
         (ue.name || '').toLowerCase().includes(q) ||
         (ue.code || '').toLowerCase().includes(q) ||
         (ue.semester || '').toLowerCase().includes(q) ||
         (ue.description || '').toLowerCase().includes(q)
       );
+      const k = this.sortKey as keyof EducationUe;
+      return [...filtered].sort((a, b) => {
+        const av = String(a[k] ?? '');
+        const bv = String(b[k] ?? '');
+        return this.sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+      });
     },
 
     openCreate(educationId = 0) {

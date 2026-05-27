@@ -10,9 +10,14 @@
 
     <div class="panel">
       <table class="tbl">
-        <thead><tr><th>Nom</th><th>Catégorie</th><th>Niveau</th><th style="text-align:right">Actions</th></tr></thead>
+        <thead><tr>
+          <th :class="['sortable', sortKey === 'name' ? 'sort-' + sortDir : '']" @click="setSort('name')">Nom</th>
+          <th :class="['sortable', sortKey === 'category_fr' ? 'sort-' + sortDir : '']" @click="setSort('category_fr')">Catégorie</th>
+          <th :class="['sortable', sortKey === 'level' ? 'sort-' + sortDir : '']" @click="setSort('level')">Niveau</th>
+          <th style="text-align:right">Actions</th>
+        </tr></thead>
         <tbody>
-          <tr v-for="item in filtered" :key="item.id">
+          <tr v-for="item in sorted" :key="item.id">
             <td><strong>{{ item.name }}</strong></td>
             <td><span class="chip chip-neutral">{{ item.category_fr }}</span></td>
             <td>
@@ -69,7 +74,7 @@ const empty = () => ({ name: '' as string | null, icon: '' as string | null, cat
 export default defineComponent({
   name: 'SkillsView',
   components: { AppModal, AppToast },
-  data() { return { items: [] as Skill[], search: '', showModal: false, editing: null as Skill | null, form: empty(), saving: false, toast: '' }; },
+  data() { return { items: [] as Skill[], search: '', sortKey: 'name' as string, sortDir: 'asc' as 'asc' | 'desc', showModal: false, editing: null as Skill | null, form: empty(), saving: false, toast: '' }; },
   computed: {
     filtered(): Skill[] {
       const q = this.search.toLowerCase().trim();
@@ -80,10 +85,24 @@ export default defineComponent({
         (i.category_en || '').toLowerCase().includes(q)
       );
     },
+    sorted(): Skill[] {
+      const list = [...this.filtered];
+      const k = this.sortKey as keyof Skill;
+      return list.sort((a, b) => {
+        const av = String(a[k] ?? '');
+        const bv = String(b[k] ?? '');
+        const cmp = isNaN(Number(av)) || isNaN(Number(bv)) ? av.localeCompare(bv) : Number(av) - Number(bv);
+        return this.sortDir === 'asc' ? cmp : -cmp;
+      });
+    },
   },
   async mounted() { await this.load(); },
   methods: {
     async load() { this.items = await api.get<Skill[]>('/skills'); },
+    setSort(key: string) {
+      if (this.sortKey === key) this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+      else { this.sortKey = key; this.sortDir = 'asc'; }
+    },
     openCreate() { this.editing = null; this.form = empty(); this.showModal = true; },
     openEdit(item: Skill) { this.editing = item; this.form = { ...empty(), ...item }; this.showModal = true; },
     async saveItem() {

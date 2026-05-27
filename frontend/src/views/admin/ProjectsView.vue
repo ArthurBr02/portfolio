@@ -30,14 +30,14 @@
       <table class="tbl">
         <thead>
           <tr>
-            <th>Titre</th>
-            <th>Catégorie</th>
+            <th :class="['sortable', sortKey === 'title_fr' ? 'sort-' + sortDir : '']" @click="setSort('title_fr')">Titre</th>
+            <th :class="['sortable', sortKey === 'category' ? 'sort-' + sortDir : '']" @click="setSort('category')">Catégorie</th>
             <th>Technologies</th>
             <th style="text-align: right">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="p in filtered" :key="p.id">
+          <tr v-for="p in sorted" :key="p.id">
             <td><strong>{{ p.title_fr }}</strong></td>
             <td><span class="chip chip-neutral">{{ p.category || '—' }}</span></td>
             <td style="font-size: 0.82rem; color: var(--color-text-muted)">{{ techs(p) }}</td>
@@ -131,6 +131,8 @@ export default defineComponent({
     return {
       projects: [] as Project[],
       search: '',
+      sortKey: 'title_fr' as string,
+      sortDir: 'asc' as 'asc' | 'desc',
       showModal: false,
       editing: null as Project | null,
       form: emptyForm(),
@@ -153,10 +155,23 @@ export default defineComponent({
         (p.technologies || '').toLowerCase().includes(q)
       );
     },
+    sorted(): Project[] {
+      const list = [...this.filtered];
+      const k = this.sortKey as keyof Project;
+      return list.sort((a, b) => {
+        const av = String(a[k] ?? '');
+        const bv = String(b[k] ?? '');
+        return this.sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+      });
+    },
   },
   async mounted() { await this.load(); },
   methods: {
     async load() { this.projects = await api.get<Project[]>('/projects'); },
+    setSort(key: string) {
+      if (this.sortKey === key) this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+      else { this.sortKey = key; this.sortDir = 'asc'; }
+    },
     techs(p: Project) { return parseTechnologies(p.technologies).join(', ') || '—'; },
     openCreate() { this.editing = null; this.form = emptyForm(); this.showModal = true; },
     async runImport() {
