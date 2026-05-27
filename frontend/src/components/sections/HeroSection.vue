@@ -10,8 +10,8 @@
         </div>
 
         <h1>
-          <span>{{ profile?.title?.split(' ').slice(0, 2).join(' ') || 'Développeur' }}</span>
-          <span><span class="accent">{{ profile?.title?.split(' ').slice(2).join(' ') || 'Fullstack' }}</span></span>
+          <span>{{ titleWords[0] }}</span>
+          <span><span class="accent">{{ titleWords[1] }}</span></span>
         </h1>
 
         <!--<p class="hero-lede">{{ profile?.bio || '' }}</p>-->
@@ -55,6 +55,18 @@ export default defineComponent({
   name: 'HeroSection',
   props: {
     profile: { type: Object as () => Profile | null, default: null },
+  },
+  computed: {
+    titleWords(): [string, string] {
+      const isEn = this.$i18n.locale === 'en';
+      const raw = isEn
+        ? (this.profile?.title_en || this.profile?.title || '')
+        : (this.profile?.title || this.profile?.title_en || '');
+      const words = raw.trim().split(' ');
+      const first = words.slice(0, 2).join(' ') || (isEn ? 'Fullstack' : 'Développeur');
+      const rest  = words.slice(2).join(' ')    || (isEn ? 'Developer' : 'Fullstack');
+      return [first, rest];
+    },
   },
 });
 </script>
