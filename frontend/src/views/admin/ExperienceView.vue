@@ -1,15 +1,18 @@
 <template>
   <div>
     <div class="admin-page-head">
-      <div><h1>Expériences</h1><p>{{ items.length }} expérience{{ items.length !== 1 ? 's' : '' }}</p></div>
-      <button class="btn btn-primary" @click="openCreate">+ Nouvelle expérience</button>
+      <div><h1>Expériences</h1><p>{{ filtered.length }} / {{ items.length }} expérience{{ items.length !== 1 ? 's' : '' }}</p></div>
+      <div style="display:flex;gap:.75rem;align-items:center">
+        <input v-model="search" type="search" placeholder="Filtrer…" style="width:200px" />
+        <button class="btn btn-primary" @click="openCreate">+ Nouvelle expérience</button>
+      </div>
     </div>
 
     <div class="panel">
       <table class="tbl">
         <thead><tr><th>Rôle</th><th>Entreprise</th><th>Période</th><th style="text-align:right">Actions</th></tr></thead>
         <tbody>
-          <tr v-for="item in items" :key="item.id">
+          <tr v-for="item in filtered" :key="item.id">
             <td><strong>{{ item.role_fr }}</strong></td>
             <td>{{ item.company }}</td>
             <td style="font-family: ui-monospace, monospace; font-size: 0.82rem">{{ item.start_date }} — {{ item.current ? 'Présent' : item.end_date }}</td>
@@ -24,7 +27,7 @@
               </div>
             </td>
           </tr>
-          <tr v-if="!items.length"><td colspan="4" style="text-align:center;color:var(--color-text-muted);padding:2rem">Aucune expérience</td></tr>
+          <tr v-if="!filtered.length"><td colspan="4" style="text-align:center;color:var(--color-text-muted);padding:2rem">Aucune expérience</td></tr>
         </tbody>
       </table>
     </div>
@@ -73,7 +76,18 @@ export default defineComponent({
   name: 'ExperienceView',
   components: { AppModal, AppToast },
   data() {
-    return { items: [] as Experience[], showModal: false, editing: null as Experience | null, form: empty(), saving: false, toast: '' };
+    return { items: [] as Experience[], search: '', showModal: false, editing: null as Experience | null, form: empty(), saving: false, toast: '' };
+  },
+  computed: {
+    filtered(): Experience[] {
+      const q = this.search.toLowerCase().trim();
+      if (!q) return this.items;
+      return this.items.filter(i =>
+        (i.role_fr || '').toLowerCase().includes(q) ||
+        (i.role_en || '').toLowerCase().includes(q) ||
+        (i.company || '').toLowerCase().includes(q)
+      );
+    },
   },
   async mounted() { await this.load(); },
   methods: {

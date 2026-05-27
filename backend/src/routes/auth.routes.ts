@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { validate } from '../middleware/validate';
-import { loginController } from '../controllers/auth.controller';
+import { auth } from '../middleware/auth';
+import { loginController, changePasswordController } from '../controllers/auth.controller';
 
 const router = Router();
 
@@ -10,6 +11,12 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-router.post('/login', validate(loginSchema), loginController);
+const changePasswordSchema = z.object({
+  current_password: z.string().min(1),
+  new_password: z.string().min(8),
+});
+
+router.post('/auth/login', validate(loginSchema), loginController);
+router.put('/auth/admin/password', auth, validate(changePasswordSchema), changePasswordController);
 
 export default router;

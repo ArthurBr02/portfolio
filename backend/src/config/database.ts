@@ -12,13 +12,19 @@ db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
 function runMigrations() {
+  db.exec(`CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, run_at TEXT DEFAULT (datetime('now')))`);
+  const already = db.prepare('SELECT name FROM schema_migrations').all() as { name: string }[];
+  const ran = new Set(already.map(r => r.name));
+
   const migrationsDir = path.join(__dirname, '../migrations');
   const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
 
   for (const file of files) {
     if (file === '002_seed.sql') continue;
+    if (ran.has(file)) continue;
     const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
     db.exec(sql);
+    db.prepare('INSERT INTO schema_migrations (name) VALUES (?)').run(file);
   }
 
   runSeed();

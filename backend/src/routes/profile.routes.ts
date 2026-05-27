@@ -4,7 +4,7 @@ import { getProfileController, updateProfileController } from '../controllers/pr
 
 const router = Router();
 
-router.get('/', getProfileController);
+router.get('/profile', getProfileController);
 router.put('/admin/profile', auth, updateProfileController);
 
 export default router;

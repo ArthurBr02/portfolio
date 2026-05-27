@@ -4,7 +4,7 @@ import { listSkills, createSkillController, updateSkillController, deleteSkillCo
 
 const router = Router();
 
-router.get('/', listSkills);
+router.get('/skills', listSkills);
 router.post('/admin/skills', auth, createSkillController);
 router.put('/admin/skills/:id', auth, updateSkillController);
 router.delete('/admin/skills/:id', auth, deleteSkillController);

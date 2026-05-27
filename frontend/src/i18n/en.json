@@ -9,11 +9,10 @@
   },
   "hero": {
     "greeting": "Hi, I'm",
+    "badge_available": "Open to new opportunities",
+    "badge_unavailable": "Not available right now",
     "cta_primary": "View my work",
-    "cta_secondary": "Download CV",
-    "meta_availability": "Availability",
-    "meta_available": "Available",
-    "meta_unavailable": "Not available"
+    "cta_secondary": "Download CV"
   },
   "about": {
     "eyebrow": "About",

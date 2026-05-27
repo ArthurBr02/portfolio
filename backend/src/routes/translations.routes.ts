@@ -4,7 +4,7 @@ import { getTranslations, updateTranslations } from '../controllers/translations
 
 const router = Router();
 
-router.get('/:lang', getTranslations);
+router.get('/translations/:lang', getTranslations);
 router.put('/admin/translations', auth, updateTranslations);
 
 export default router;

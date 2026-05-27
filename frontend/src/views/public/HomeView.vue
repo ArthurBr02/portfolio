@@ -8,6 +8,7 @@
       :profile="profile"
       :project-count="projects.length"
       :experience-count="experiences.length"
+      :experiences="experiences"
     />
 
     <div v-if="settings.isSectionEnabled('skills')" class="section-divider" />

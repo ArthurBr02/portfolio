@@ -3,13 +3,17 @@
     <div class="admin-page-head">
       <div>
         <h1>Messages</h1>
-        <p>{{ messages.length }} message{{ messages.length !== 1 ? 's' : '' }}, {{ unreadCount }} non lu{{ unreadCount !== 1 ? 's' : '' }}</p>
+        <p>{{ filtered.length }} / {{ messages.length }} message{{ messages.length !== 1 ? 's' : '' }}, {{ unreadCount }} non lu{{ unreadCount !== 1 ? 's' : '' }}</p>
+      </div>
+      <div style="display:flex;gap:.75rem;align-items:center">
+        <input v-model="search" type="search" placeholder="Filtrer…" style="width:200px" />
+        <button :class="['btn btn-sm', onlyUnread ? 'btn-primary' : 'btn-ghost']" @click="onlyUnread = !onlyUnread">Non lus</button>
       </div>
     </div>
 
     <div class="panel">
       <div class="msg-list">
-        <template v-for="msg in messages" :key="msg.id">
+        <template v-for="msg in filtered" :key="msg.id">
           <div :class="['msg-item', { unread: msg.is_read === 0 }]" @click="toggle(msg.id)">
             <span :class="['msg-unread-dot', { read: msg.is_read === 1 }]" />
             <div class="msg-avatar">{{ initials(msg.name) }}</div>
@@ -70,6 +74,8 @@ export default defineComponent({
   data() {
     return {
       messages: [] as Message[],
+      search: '',
+      onlyUnread: false,
       expandedId: null as number | null,
       toast: '',
     };
@@ -77,6 +83,18 @@ export default defineComponent({
   computed: {
     unreadCount(): number {
       return this.messages.filter(m => m.is_read === 0).length;
+    },
+    filtered(): Message[] {
+      let list = this.messages;
+      if (this.onlyUnread) list = list.filter(m => m.is_read === 0);
+      const q = this.search.toLowerCase().trim();
+      if (!q) return list;
+      return list.filter(m =>
+        (m.name || '').toLowerCase().includes(q) ||
+        (m.email || '').toLowerCase().includes(q) ||
+        (m.subject || '').toLowerCase().includes(q) ||
+        (m.message || '').toLowerCase().includes(q)
+      );
     },
   },
   async mounted() {

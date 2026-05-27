@@ -12,6 +12,8 @@ const envSchema = z.object({
   SMTP_PORT: z.string().default('587'),
   SMTP_USER: z.string().default(''),
   SMTP_PASS: z.string().default(''),
+  OPENROUTER_API_KEY: z.string().default(''),
+  AI_MODEL: z.string().default('mistralai/mistral-small-3.1-24b-instruct:free'),
 });
 
 const parsed = envSchema.safeParse(process.env);

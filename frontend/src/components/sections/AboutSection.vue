@@ -31,7 +31,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import type { Profile } from '../../lib/types';
+import type { Profile, Experience } from '../../lib/types';
 
 export default defineComponent({
   name: 'AboutSection',
@@ -39,6 +39,7 @@ export default defineComponent({
     profile: { type: Object as () => Profile | null, default: null },
     projectCount: { type: Number, default: 0 },
     experienceCount: { type: Number, default: 0 },
+    experiences: { type: Array as () => Experience[], default: () => [] },
   },
   computed: {
     paragraphs(): string[] {
@@ -46,7 +47,13 @@ export default defineComponent({
       return this.profile.bio.split('\n').filter(Boolean);
     },
     yearsExp(): number {
-      return this.experienceCount > 0 ? this.experienceCount + 1 : 1;
+      const dates = this.experiences
+        .map(e => e.start_date)
+        .filter(Boolean)
+        .map(d => new Date(d!));
+      if (!dates.length) return 0;
+      const earliest = new Date(Math.min(...dates.map(d => d.getTime())));
+      return Math.floor((Date.now() - earliest.getTime()) / (1000 * 60 * 60 * 24 * 365));
     },
   },
 });

@@ -4,7 +4,7 @@ import { getSettingsController, updateSettingsController } from '../controllers/
 
 const router = Router();
 
-router.get('/', getSettingsController);
+router.get('/settings', getSettingsController);
 router.put('/admin/settings', auth, updateSettingsController);
 
 export default router;

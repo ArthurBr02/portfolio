@@ -7,8 +7,8 @@ import {
 
 const router = Router();
 
-router.get('/', listProjects);
-router.get('/:id', getProject);
+router.get('/projects', listProjects);
+router.get('/projects/:id', getProject);
 router.post('/admin/projects', auth, createProjectController);
 router.put('/admin/projects/:id', auth, updateProjectController);
 router.delete('/admin/projects/:id', auth, deleteProjectController);

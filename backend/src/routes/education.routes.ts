@@ -4,7 +4,7 @@ import { listEducation, createEducationController, updateEducationController, de
 
 const router = Router();
 
-router.get('/', listEducation);
+router.get('/education', listEducation);
 router.post('/admin/education', auth, createEducationController);
 router.put('/admin/education/:id', auth, updateEducationController);
 router.delete('/admin/education/:id', auth, deleteEducationController);

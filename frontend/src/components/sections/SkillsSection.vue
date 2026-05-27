@@ -61,6 +61,12 @@ export default defineComponent({
     },
   },
 
+  watch: {
+    skills() {
+      this.$nextTick(() => this.setupObservers());
+    },
+  },
+
   mounted() {
     this.$nextTick(() => this.setupObservers());
   },
@@ -75,6 +81,9 @@ export default defineComponent({
     },
 
     setupObservers() {
+      this.observers.forEach(o => o.disconnect());
+      this.observers = [];
+
       for (const [cat, el] of Object.entries(this.catRefs)) {
         const obs = new IntersectionObserver(
           (entries) => {
@@ -86,7 +95,7 @@ export default defineComponent({
               }
             }
           },
-          { threshold: 0.3 }
+          { threshold: 0.2 }
         );
         obs.observe(el);
         this.observers.push(obs);

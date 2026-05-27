@@ -10,6 +10,8 @@ export interface Profile {
   location: string | null;
   avatar_url: string | null;
   cv_url: string | null;
+  linkedin_url: string | null;
+  github_url: string | null;
   available_for_work: number;
 }
 

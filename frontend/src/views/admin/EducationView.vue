@@ -1,15 +1,18 @@
 <template>
   <div>
     <div class="admin-page-head">
-      <div><h1>Formation</h1><p>{{ items.length }} entrée{{ items.length !== 1 ? 's' : '' }}</p></div>
-      <button class="btn btn-primary" @click="openCreate">+ Nouvelle formation</button>
+      <div><h1>Formation</h1><p>{{ filtered.length }} / {{ items.length }} entrée{{ items.length !== 1 ? 's' : '' }}</p></div>
+      <div style="display:flex;gap:.75rem;align-items:center">
+        <input v-model="search" type="search" placeholder="Filtrer…" style="width:200px" />
+        <button class="btn btn-primary" @click="openCreate">+ Nouvelle formation</button>
+      </div>
     </div>
 
     <div class="panel">
       <table class="tbl">
         <thead><tr><th>Diplôme</th><th>École</th><th>Période</th><th style="text-align:right">Actions</th></tr></thead>
         <tbody>
-          <tr v-for="item in items" :key="item.id">
+          <tr v-for="item in filtered" :key="item.id">
             <td><strong>{{ item.degree_fr }}</strong></td>
             <td>{{ item.school }}</td>
             <td style="font-family:ui-monospace,monospace;font-size:0.82rem">{{ item.start_date }} — {{ item.end_date }}</td>
@@ -20,7 +23,7 @@
               </div>
             </td>
           </tr>
-          <tr v-if="!items.length"><td colspan="4" style="text-align:center;color:var(--color-text-muted);padding:2rem">Aucune formation</td></tr>
+          <tr v-if="!filtered.length"><td colspan="4" style="text-align:center;color:var(--color-text-muted);padding:2rem">Aucune formation</td></tr>
         </tbody>
       </table>
     </div>
@@ -63,7 +66,18 @@ const empty = () => ({ school: '' as string | null, degree_fr: '' as string | nu
 export default defineComponent({
   name: 'EducationView',
   components: { AppModal, AppToast },
-  data() { return { items: [] as Education[], showModal: false, editing: null as Education | null, form: empty(), saving: false, toast: '' }; },
+  data() { return { items: [] as Education[], search: '', showModal: false, editing: null as Education | null, form: empty(), saving: false, toast: '' }; },
+  computed: {
+    filtered(): Education[] {
+      const q = this.search.toLowerCase().trim();
+      if (!q) return this.items;
+      return this.items.filter(i =>
+        (i.degree_fr || '').toLowerCase().includes(q) ||
+        (i.degree_en || '').toLowerCase().includes(q) ||
+        (i.school || '').toLowerCase().includes(q)
+      );
+    },
+  },
   async mounted() { await this.load(); },
   methods: {
     async load() { this.items = await api.get<Education[]>('/education'); },

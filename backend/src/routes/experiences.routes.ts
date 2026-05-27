@@ -4,7 +4,7 @@ import { listExperiences, createExperienceController, updateExperienceController
 
 const router = Router();
 
-router.get('/', listExperiences);
+router.get('/experiences', listExperiences);
 router.post('/admin/experiences', auth, createExperienceController);
 router.put('/admin/experiences/:id', auth, updateExperienceController);
 router.delete('/admin/experiences/:id', auth, deleteExperienceController);

@@ -87,13 +87,43 @@
           <span class="current">{{ currentPageTitle }}</span>
         </div>
 
-        <div class="admin-search">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M10 10l2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-          <input type="text" placeholder="Rechercher…" disabled />
-          <kbd>⌘K</kbd>
+        <div class="admin-search-wrap" ref="searchWrap">
+          <div class="admin-search" :class="{ focused: searchOpen }">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M10 10l2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <input
+              ref="searchInput"
+              type="text"
+              placeholder="Rechercher…"
+              v-model="searchQuery"
+              @input="onSearchInput"
+              @focus="searchOpen = true"
+              @keydown.escape="closeSearch"
+            />
+            <kbd @click="focusSearch">⌘K</kbd>
+          </div>
+          <div v-if="searchOpen && hasResults" class="search-dropdown">
+            <template v-for="(group, key) in searchResults" :key="key">
+              <template v-if="group.length">
+                <div class="search-group-label">{{ groupLabel(key) }}</div>
+                <button
+                  v-for="item in group"
+                  :key="item.id"
+                  class="search-result-item"
+                  @click="goToResult(key, item.id)"
+                >
+                  <span class="search-result-label">{{ item.label }}</span>
+                  <span class="search-result-sub">{{ item.sub }}</span>
+                </button>
+              </template>
+            </template>
+            <div v-if="searchLoading" class="search-empty">Recherche…</div>
+          </div>
+          <div v-else-if="searchOpen && searchQuery.length >= 2 && !searchLoading" class="search-dropdown">
+            <div class="search-empty">Aucun résultat</div>
+          </div>
         </div>
 
         <div class="admin-topbar-actions">
@@ -118,6 +148,27 @@ import { defineComponent } from 'vue';
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useMessagesStore } from '../stores/messages';
+import { useSettingsStore } from '../stores/settings';
+import { api } from '../lib/api';
+
+type SearchGroup = { id: number; label: string; sub: string }[];
+type SearchResults = Record<string, SearchGroup>;
+
+const GROUP_LABELS: Record<string, string> = {
+  projects: 'Projets',
+  experiences: 'Expériences',
+  education: 'Formation',
+  skills: 'Compétences',
+  messages: 'Messages',
+};
+
+const GROUP_ROUTES: Record<string, string> = {
+  projects: '/admin/projects',
+  experiences: '/admin/experience',
+  education: '/admin/education',
+  skills: '/admin/skills',
+  messages: '/admin/messages',
+};
 
 const PAGE_TITLES: Record<string, string> = {
   dashboard: 'Dashboard',
@@ -140,7 +191,18 @@ export default defineComponent({
     const messages = useMessagesStore();
     const route = useRoute();
     const router = useRouter();
-    return { auth, messages, route, router };
+    const settings = useSettingsStore();
+    return { auth, messages, route, router, settings };
+  },
+
+  data() {
+    return {
+      searchQuery: '',
+      searchOpen: false,
+      searchLoading: false,
+      searchResults: {} as SearchResults,
+      searchTimer: null as ReturnType<typeof setTimeout> | null,
+    };
   },
 
   computed: {
@@ -148,10 +210,22 @@ export default defineComponent({
       const name = String(this.route.name || '');
       return PAGE_TITLES[name] || name;
     },
+    hasResults(): boolean {
+      return Object.values(this.searchResults).some((g) => g.length > 0);
+    },
   },
 
-  mounted() {
+  async mounted() {
+    await this.settings.fetchSettings();
+    this.settings.applyToDOM();
     this.messages.fetchMessages();
+    document.addEventListener('keydown', this.onGlobalKey);
+    document.addEventListener('click', this.onDocClick);
+  },
+
+  beforeUnmount() {
+    document.removeEventListener('keydown', this.onGlobalKey);
+    document.removeEventListener('click', this.onDocClick);
   },
 
   methods: {
@@ -161,6 +235,47 @@ export default defineComponent({
     logout() {
       this.auth.logout();
       this.router.push('/login');
+    },
+    focusSearch() {
+      (this.$refs.searchInput as HTMLInputElement)?.focus();
+    },
+    closeSearch() {
+      this.searchOpen = false;
+      (this.$refs.searchInput as HTMLInputElement)?.blur();
+    },
+    onGlobalKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        this.focusSearch();
+        this.searchOpen = true;
+      }
+    },
+    onDocClick(e: MouseEvent) {
+      const wrap = this.$refs.searchWrap as HTMLElement;
+      if (wrap && !wrap.contains(e.target as Node)) this.searchOpen = false;
+    },
+    onSearchInput() {
+      if (this.searchTimer) clearTimeout(this.searchTimer);
+      if (this.searchQuery.length < 2) { this.searchResults = {}; return; }
+      this.searchTimer = setTimeout(() => this.runSearch(), 300);
+    },
+    async runSearch() {
+      this.searchLoading = true;
+      try {
+        this.searchResults = await api.get<SearchResults>(`/admin/search?q=${encodeURIComponent(this.searchQuery)}`);
+      } finally {
+        this.searchLoading = false;
+      }
+    },
+    groupLabel(key: string): string {
+      return GROUP_LABELS[key] || key;
+    },
+    goToResult(group: string, id: number) {
+      const route = GROUP_ROUTES[group];
+      if (route) this.router.push(route);
+      this.closeSearch();
+      this.searchQuery = '';
+      this.searchResults = {};
     },
   },
 });

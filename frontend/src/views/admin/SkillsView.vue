@@ -1,15 +1,18 @@
 <template>
   <div>
     <div class="admin-page-head">
-      <div><h1>Compétences</h1><p>{{ items.length }} skill{{ items.length !== 1 ? 's' : '' }}</p></div>
-      <button class="btn btn-primary" @click="openCreate">+ Nouvelle compétence</button>
+      <div><h1>Compétences</h1><p>{{ filtered.length }} / {{ items.length }} skill{{ items.length !== 1 ? 's' : '' }}</p></div>
+      <div style="display:flex;gap:.75rem;align-items:center">
+        <input v-model="search" type="search" placeholder="Filtrer…" style="width:200px" />
+        <button class="btn btn-primary" @click="openCreate">+ Nouvelle compétence</button>
+      </div>
     </div>
 
     <div class="panel">
       <table class="tbl">
         <thead><tr><th>Nom</th><th>Catégorie</th><th>Niveau</th><th style="text-align:right">Actions</th></tr></thead>
         <tbody>
-          <tr v-for="item in items" :key="item.id">
+          <tr v-for="item in filtered" :key="item.id">
             <td><strong>{{ item.name }}</strong></td>
             <td><span class="chip chip-neutral">{{ item.category_fr }}</span></td>
             <td>
@@ -25,7 +28,7 @@
               </div>
             </td>
           </tr>
-          <tr v-if="!items.length"><td colspan="4" style="text-align:center;color:var(--color-text-muted);padding:2rem">Aucune compétence</td></tr>
+          <tr v-if="!filtered.length"><td colspan="4" style="text-align:center;color:var(--color-text-muted);padding:2rem">Aucune compétence</td></tr>
         </tbody>
       </table>
     </div>
@@ -64,7 +67,18 @@ const empty = () => ({ name: '' as string | null, icon: '' as string | null, cat
 export default defineComponent({
   name: 'SkillsView',
   components: { AppModal, AppToast },
-  data() { return { items: [] as Skill[], showModal: false, editing: null as Skill | null, form: empty(), saving: false, toast: '' }; },
+  data() { return { items: [] as Skill[], search: '', showModal: false, editing: null as Skill | null, form: empty(), saving: false, toast: '' }; },
+  computed: {
+    filtered(): Skill[] {
+      const q = this.search.toLowerCase().trim();
+      if (!q) return this.items;
+      return this.items.filter(i =>
+        (i.name || '').toLowerCase().includes(q) ||
+        (i.category_fr || '').toLowerCase().includes(q) ||
+        (i.category_en || '').toLowerCase().includes(q)
+      );
+    },
+  },
   async mounted() { await this.load(); },
   methods: {
     async load() { this.items = await api.get<Skill[]>('/skills'); },
