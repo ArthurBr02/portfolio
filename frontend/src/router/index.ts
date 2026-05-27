@@ -31,6 +31,7 @@ const router = createRouter({
         { path: 'projects',     name: 'projects',     component: () => import('../views/admin/ProjectsView.vue') },
         { path: 'experience',   name: 'experience',   component: () => import('../views/admin/ExperienceView.vue') },
         { path: 'education',    name: 'education',    component: () => import('../views/admin/EducationView.vue') },
+        { path: 'education-ue', name: 'education-ue', component: () => import('../views/admin/EducationUeView.vue') },
         { path: 'skills',       name: 'skills',       component: () => import('../views/admin/SkillsView.vue') },
         { path: 'messages',     name: 'messages',     component: () => import('../views/admin/MessagesView.vue') },
         { path: 'translations', name: 'translations', component: () => import('../views/admin/TranslationsView.vue') },

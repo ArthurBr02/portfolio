@@ -16,10 +16,7 @@
             <td><strong>{{ item.name }}</strong></td>
             <td><span class="chip chip-neutral">{{ item.category_fr }}</span></td>
             <td>
-              <div style="display:flex;align-items:center;gap:.75rem">
-                <div class="skill-bar" style="width:80px"><div class="skill-bar-fill" :style="{width:`${item.level}%`}" /></div>
-                <span style="font-size:.82rem;color:var(--color-text-muted)">{{ item.level }}%</span>
-              </div>
+              <span class="skill-badge" :data-level="item.level">{{ levelLabel(item.level) }}</span>
             </td>
             <td>
               <div class="tbl-actions">
@@ -42,8 +39,12 @@
           <div><label class="field-label">Catégorie (EN)</label><input v-model="form.category_en" /></div>
         </div>
         <div>
-          <label class="field-label">Niveau : {{ form.level }}%</label>
-          <input type="range" v-model.number="form.level" min="0" max="100" style="width:100%;margin-top:.5rem" />
+          <label class="field-label">Niveau</label>
+          <select v-model.number="form.level" style="margin-top:.5rem">
+            <option :value="1">Notions</option>
+            <option :value="2">Maîtrise</option>
+            <option :value="3">Expert</option>
+          </select>
         </div>
         <div style="display:flex;justify-content:flex-end;gap:.75rem;margin-top:.5rem">
           <button class="btn btn-ghost" @click="showModal = false">Annuler</button>
@@ -62,7 +63,8 @@ import type { Skill } from '../../lib/types';
 import AppModal from '../../components/ui/AppModal.vue';
 import AppToast from '../../components/ui/AppToast.vue';
 
-const empty = () => ({ name: '' as string | null, icon: '' as string | null, category_fr: '' as string | null, category_en: '' as string | null, level: 50, sort_order: 0 });
+const LEVEL_LABELS: Record<number, string> = { 1: 'Notions', 2: 'Maîtrise', 3: 'Expert' };
+const empty = () => ({ name: '' as string | null, icon: '' as string | null, category_fr: '' as string | null, category_en: '' as string | null, level: 1 as 1 | 2 | 3, sort_order: 0 });
 
 export default defineComponent({
   name: 'SkillsView',
@@ -95,6 +97,9 @@ export default defineComponent({
     async remove(id: number) {
       if (!confirm('Supprimer ?')) return;
       await api.delete(`/admin/skills/${id}`); await this.load(); this.toast = 'Supprimé';
+    },
+    levelLabel(level: number): string {
+      return LEVEL_LABELS[level] || '';
     },
   },
 });

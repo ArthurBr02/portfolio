@@ -6,7 +6,7 @@ export interface Skill {
   icon: string | null;
   category_fr: string | null;
   category_en: string | null;
-  level: number;
+  level: 1 | 2 | 3;
   sort_order: number;
 }
 
@@ -18,7 +18,7 @@ export function createSkill(data: Omit<Skill, 'id'>): number {
   const result = db.prepare(`
     INSERT INTO skills (name, icon, category_fr, category_en, level, sort_order)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).run(data.name, data.icon, data.category_fr, data.category_en, data.level ?? 50, data.sort_order ?? 0);
+  `).run(data.name, data.icon, data.category_fr, data.category_en, data.level ?? 1, data.sort_order ?? 0);
   return result.lastInsertRowid as number;
 }
 

@@ -47,6 +47,10 @@
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1l7 4-7 4-7-4 7-4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M3 7v4c0 1.657 2.239 3 5 3s5-1.343 5-3V7" stroke="currentColor" stroke-width="1.5"/></svg>
           Formation
         </RouterLink>
+        <RouterLink to="/admin/education-ue" :class="['sidebar-item', { active: isActive('education-ue') }]">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          UE
+        </RouterLink>
         <RouterLink to="/admin/skills"       :class="['sidebar-item', { active: isActive('skills') }]">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 12h3M2 8h7M2 4h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
           Compétences
@@ -176,6 +180,7 @@ const PAGE_TITLES: Record<string, string> = {
   projects: 'Projets',
   experience: 'Expériences',
   education: 'Formation',
+  'education-ue': 'Unités d\'enseignement',
   skills: 'Compétences',
   messages: 'Messages',
   translations: 'Traductions',

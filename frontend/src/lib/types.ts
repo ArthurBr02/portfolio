@@ -61,6 +61,16 @@ export interface Education {
   start_date: string | null;
   end_date: string | null;
   sort_order: number;
+  ue: EducationUe[];
+}
+
+export interface EducationUe {
+  id: number;
+  education_id: number;
+  semester: string | null;
+  code: string | null;
+  name: string;
+  sort_order: number;
 }
 
 export interface Skill {
@@ -69,7 +79,7 @@ export interface Skill {
   icon: string | null;
   category_fr: string | null;
   category_en: string | null;
-  level: number;
+  level: 1 | 2 | 3;
   sort_order: number;
 }
 

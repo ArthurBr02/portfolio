@@ -35,6 +35,16 @@
               <div class="timeline-title">{{ locale === 'en' ? edu.degree_en : edu.degree_fr }}</div>
               <div class="timeline-company">{{ edu.school }}</div>
               <div class="timeline-desc">{{ locale === 'en' ? edu.description_en : edu.description_fr }}</div>
+              <div class="edu-ue-list" v-if="edu.ue && edu.ue.length">
+                <template v-for="group in groupedBySemester(edu.ue)" :key="group.name">
+                  <p class="edu-ue-semester" v-if="group.name">{{ group.name }}</p>
+                  <ul>
+                    <li v-for="ue in group.items" :key="ue.id">
+                      <span class="edu-ue-code" v-if="ue.code">{{ ue.code }}</span>{{ ue.name }}
+                    </li>
+                  </ul>
+                </template>
+              </div>
             </div>
           </div>
         </div>
@@ -45,8 +55,10 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import type { Experience, Education } from '../../lib/types';
+import type { Experience, Education, EducationUe } from '../../lib/types';
 import { formatDate as fmtDate } from '../../lib/utils';
+
+interface UeGroup { name: string; items: EducationUe[] }
 
 export default defineComponent({
   name: 'ExperienceEducationSection',
@@ -60,6 +72,15 @@ export default defineComponent({
   methods: {
     formatDate(d: string | null): string {
       return fmtDate(d, this.locale);
+    },
+    groupedBySemester(ues: EducationUe[]): UeGroup[] {
+      const map: Record<string, EducationUe[]> = {};
+      for (const ue of ues) {
+        const key = ue.semester || '';
+        if (!map[key]) map[key] = [];
+        map[key].push(ue);
+      }
+      return Object.entries(map).map(([name, items]) => ({ name, items }));
     },
   },
 });

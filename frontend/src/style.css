@@ -752,23 +752,31 @@ input:focus, textarea:focus, select:focus {
 .skill-head {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   font-size: 0.88rem;
-  margin-bottom: 0.4rem;
   color: var(--color-text-secondary);
 }
 .skill-name { color: var(--color-text-primary); font-weight: 500; }
-.skill-bar {
-  height: 4px;
-  background: var(--color-bg-secondary);
+.skill-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
   border-radius: var(--radius-full);
-  overflow: hidden;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
 }
-.skill-bar-fill {
-  height: 100%;
+.skill-badge[data-level="1"] {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-muted);
+}
+.skill-badge[data-level="2"] {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+.skill-badge[data-level="3"] {
   background: var(--color-accent);
-  border-radius: var(--radius-full);
-  width: 0;
-  transition: width 1.2s cubic-bezier(.2,.8,.2,1);
+  color: var(--color-accent-fg);
 }
 
 /* ═══════════════════════════════════════
@@ -988,6 +996,36 @@ input:focus, textarea:focus, select:focus {
 .timeline-title { font-family: var(--font-sans); font-weight: 600; font-size: 1.1rem; letter-spacing: -0.01em; margin-bottom: 0.15rem; }
 .timeline-company { font-size: 0.92rem; color: var(--color-accent); margin-bottom: 0.6rem; font-weight: 500; }
 .timeline-desc { font-size: 0.92rem; color: var(--color-text-secondary); }
+.edu-ue-list {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+}
+.edu-ue-semester {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  margin-bottom: 0.35rem;
+  margin-top: 0.6rem;
+}
+.edu-ue-semester:first-child { margin-top: 0; }
+.edu-ue-list ul { list-style: none; padding: 0; margin: 0; }
+.edu-ue-list li {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  padding: 0.2rem 0;
+  display: flex;
+  gap: 0.4rem;
+  align-items: baseline;
+}
+.edu-ue-code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
 
 .exp-edu-grid {
   display: grid;

@@ -8,20 +8,13 @@
           v-for="(group, cat) in groupedSkills"
           :key="cat"
           class="card skills-cat"
-          :ref="el => registerRef(el, cat)"
         >
           <h3>{{ cat }}</h3>
           <p class="skills-cat-sub">{{ group.length }} {{ group.length > 1 ? 'compétences' : 'compétence' }}</p>
           <div v-for="skill in group" :key="skill.id" class="skill-row">
             <div class="skill-head">
               <span class="skill-name">{{ skill.name }}</span>
-              <span>{{ skill.level }}%</span>
-            </div>
-            <div class="skill-bar">
-              <div
-                class="skill-bar-fill"
-                :style="{ width: animatedIds.has(skill.id) ? `${skill.level}%` : '0%' }"
-              />
+              <span class="skill-badge" :data-level="skill.level">{{ levelLabel(skill.level) }}</span>
             </div>
           </div>
         </div>
@@ -34,19 +27,13 @@
 import { defineComponent } from 'vue';
 import type { Skill } from '../../lib/types';
 
+const LEVEL_LABELS: Record<number, string> = { 1: 'Notions', 2: 'Maîtrise', 3: 'Expert' };
+
 export default defineComponent({
   name: 'SkillsSection',
   props: {
     skills: { type: Array as () => Skill[], default: () => [] },
     locale: { type: String, default: 'fr' },
-  },
-
-  data() {
-    return {
-      animatedIds: new Set<number>(),
-      observers: [] as IntersectionObserver[],
-      catRefs: {} as Record<string, Element>,
-    };
   },
 
   computed: {
@@ -61,45 +48,9 @@ export default defineComponent({
     },
   },
 
-  watch: {
-    skills() {
-      this.$nextTick(() => this.setupObservers());
-    },
-  },
-
-  mounted() {
-    this.$nextTick(() => this.setupObservers());
-  },
-
-  beforeUnmount() {
-    this.observers.forEach(o => o.disconnect());
-  },
-
   methods: {
-    registerRef(el: unknown, cat: string) {
-      if (el instanceof Element) this.catRefs[cat] = el;
-    },
-
-    setupObservers() {
-      this.observers.forEach(o => o.disconnect());
-      this.observers = [];
-
-      for (const [cat, el] of Object.entries(this.catRefs)) {
-        const obs = new IntersectionObserver(
-          (entries) => {
-            for (const e of entries) {
-              if (e.isIntersecting) {
-                const group = this.groupedSkills[cat] || [];
-                group.forEach(s => this.animatedIds.add(s.id));
-                obs.disconnect();
-              }
-            }
-          },
-          { threshold: 0.2 }
-        );
-        obs.observe(el);
-        this.observers.push(obs);
-      }
+    levelLabel(level: number): string {
+      return LEVEL_LABELS[level] || '';
     },
   },
 });

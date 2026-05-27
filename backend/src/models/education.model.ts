@@ -1,4 +1,5 @@
 import { db } from '../config/database';
+import { getAllUeByEducation, type EducationUe } from './educationUe.model';
 
 export interface Education {
   id: number;
@@ -10,10 +11,12 @@ export interface Education {
   start_date: string | null;
   end_date: string | null;
   sort_order: number;
+  ue: EducationUe[];
 }
 
 export function getAllEducation(): Education[] {
-  return db.prepare('SELECT * FROM education ORDER BY sort_order ASC, start_date DESC').all() as Education[];
+  const rows = db.prepare('SELECT * FROM education ORDER BY sort_order ASC, start_date DESC').all() as Omit<Education, 'ue'>[];
+  return rows.map(row => ({ ...row, ue: getAllUeByEducation(row.id) }));
 }
 
 export function createEducation(data: Omit<Education, 'id'>): number {
