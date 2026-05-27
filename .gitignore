@@ -37,7 +37,7 @@ lerna-debug.log*
 .env.production.local
 
 # ==================== DATABASE ====================
-*.sqlite
+*.sqlite-*
 *.sqlite3
 *.db
 /backend/database/*.sqlite
@@ -342,3 +342,5 @@ dist
 
 # Angular
 .angular/
+
+dump.sql

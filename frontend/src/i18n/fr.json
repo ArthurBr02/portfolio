@@ -1,0 +1,58 @@
+{
+  "nav": {
+    "about": "À propos",
+    "skills": "Compétences",
+    "projects": "Projets",
+    "experience": "Parcours",
+    "contact": "Contact",
+    "available": "Disponible"
+  },
+  "hero": {
+    "greeting": "Bonjour, je suis",
+    "badge_available": "Disponible pour de nouvelles opportunités",
+    "badge_unavailable": "Non disponible actuellement",
+    "cta_primary": "Voir mes projets",
+    "cta_secondary": "Télécharger le CV"
+  },
+  "about": {
+    "eyebrow": "À propos",
+    "title": "Qui suis-je ?",
+    "stats_projects": "Projets",
+    "stats_years": "Ans d'expérience",
+    "stats_clients": "Clients"
+  },
+  "skills": {
+    "eyebrow": "Compétences",
+    "title": "Mon expertise"
+  },
+  "projects": {
+    "eyebrow": "Projets",
+    "title": "Mes réalisations",
+    "filter_all": "Tous",
+    "filter_web": "Web",
+    "filter_mobile": "Mobile",
+    "filter_tools": "Outils",
+    "view_demo": "Voir le projet",
+    "view_repo": "Code source"
+  },
+  "experience": {
+    "eyebrow": "Parcours",
+    "title_exp": "Expériences",
+    "title_edu": "Formation",
+    "present": "Présent"
+  },
+  "contact": {
+    "eyebrow": "Contact",
+    "title": "Travaillons ensemble",
+    "label_name": "Nom",
+    "label_email": "Email",
+    "label_subject": "Sujet",
+    "label_message": "Message",
+    "send": "Envoyer",
+    "success": "Message envoyé !",
+    "error": "Erreur lors de l'envoi"
+  },
+  "footer": {
+    "rights": "Tous droits réservés"
+  }
+}

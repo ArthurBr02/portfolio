@@ -1,0 +1,58 @@
+{
+  "nav": {
+    "about": "About",
+    "skills": "Skills",
+    "projects": "Projects",
+    "experience": "Experience",
+    "contact": "Contact",
+    "available": "Available"
+  },
+  "hero": {
+    "greeting": "Hi, I'm",
+    "badge_available": "Open to new opportunities",
+    "badge_unavailable": "Not available right now",
+    "cta_primary": "View my work",
+    "cta_secondary": "Download CV"
+  },
+  "about": {
+    "eyebrow": "About",
+    "title": "Who am I?",
+    "stats_projects": "Projects",
+    "stats_years": "Years of experience",
+    "stats_clients": "Clients"
+  },
+  "skills": {
+    "eyebrow": "Skills",
+    "title": "My expertise"
+  },
+  "projects": {
+    "eyebrow": "Projects",
+    "title": "My work",
+    "filter_all": "All",
+    "filter_web": "Web",
+    "filter_mobile": "Mobile",
+    "filter_tools": "Tools",
+    "view_demo": "View project",
+    "view_repo": "Source code"
+  },
+  "experience": {
+    "eyebrow": "Experience",
+    "title_exp": "Work experience",
+    "title_edu": "Education",
+    "present": "Present"
+  },
+  "contact": {
+    "eyebrow": "Contact",
+    "title": "Let's work together",
+    "label_name": "Name",
+    "label_email": "Email",
+    "label_subject": "Subject",
+    "label_message": "Message",
+    "send": "Send",
+    "success": "Message sent!",
+    "error": "Failed to send"
+  },
+  "footer": {
+    "rights": "All rights reserved"
+  }
+}
