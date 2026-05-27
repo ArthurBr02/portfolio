@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import dotenv from 'dotenv';
 
-dotenv.config();
+import path from 'path';
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const envSchema = z.object({
   PORT: z.string().default('3000'),
@@ -14,6 +15,8 @@ const envSchema = z.object({
   SMTP_PASS: z.string().default(''),
   OPENROUTER_API_KEY: z.string().default(''),
   AI_MODEL: z.string().default('mistralai/mistral-small-3.1-24b-instruct:free'),
+  DB_PATH: z.string().default(''),
+  UPLOADS_DIR: z.string().default(''),
 });
 
 const parsed = envSchema.safeParse(process.env);

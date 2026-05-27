@@ -5,8 +5,9 @@ import fs from 'fs';
 import crypto from 'crypto';
 import { auth } from '../middleware/auth';
 import { uploadController } from '../controllers/upload.controller';
+import { env } from '../config/env';
 
-const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
+const UPLOADS_DIR = env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
 
 const storage = multer.diskStorage({
   destination: UPLOADS_DIR,

@@ -4,7 +4,7 @@ import path from 'path';
 import bcrypt from 'bcryptjs';
 import { env } from './env';
 
-const DB_PATH = path.join(process.cwd(), 'database.sqlite');
+const DB_PATH = env.DB_PATH || path.join(process.cwd(), 'database.sqlite');
 
 export const db = new Database(DB_PATH);
 
