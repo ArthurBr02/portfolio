@@ -11,5 +11,4 @@ app.use(createPinia());
 app.use(router);
 app.use(i18n);
 
-const locale = localStorage.getItem('locale') || 'fr';
-loadRemoteTranslations(locale).finally(() => app.mount('#app'));
+Promise.all([loadRemoteTranslations('fr'), loadRemoteTranslations('en')]).finally(() => app.mount('#app'));
