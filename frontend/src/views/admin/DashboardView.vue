@@ -68,34 +68,8 @@
           </div>
         </div>
         <div class="panel-body">
-          <div class="chart" ref="chartContainer">
-            <svg class="chart-svg" :viewBox="`0 0 ${svgW} ${svgH}`" preserveAspectRatio="none">
-              <template v-if="chartPoints.length > 1">
-                <line
-                  v-for="y in gridLines"
-                  :key="y"
-                  :x1="0" :y1="y" :x2="svgW" :y2="y"
-                  class="chart-grid"
-                />
-                <polygon :points="areaPoints" class="chart-area" />
-                <polyline :points="linePoints" class="chart-line" />
-                <circle
-                  v-for="(pt, i) in chartPoints"
-                  :key="i"
-                  :cx="pt.x" :cy="pt.y" r="4"
-                  class="chart-dot"
-                />
-              </template>
-            </svg>
-            <div v-if="chartPoints.length > 1" class="chart-labels" aria-hidden="true">
-              <span
-                v-for="(pt, i) in chartPoints"
-                :key="i"
-                class="chart-label"
-                :style="{ left: `${(pt.x / svgW) * 100}%` }"
-              >{{ pt.label }}</span>
-            </div>
-            <div v-else class="chart-empty">Pas encore de données</div>
+          <div class="chart">
+            <canvas ref="chartCanvas" />
           </div>
         </div>
       </div>
@@ -130,11 +104,27 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, markRaw } from 'vue';
 import { RouterLink } from 'vue-router';
+import {
+  Chart,
+  LineController,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Filler,
+  Tooltip,
+} from 'chart.js';
 import { api } from '../../lib/api';
 import { initials, relativeTime } from '../../lib/utils';
 import type { AnalyticsData } from '../../lib/types';
+
+Chart.register(LineController, CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip);
+
+type Period = '1d' | '7d' | '30d' | '1y' | 'all';
+
+const MONTHS = ['jan', 'fév', 'mar', 'avr', 'mai', 'jun', 'jul', 'aoû', 'sep', 'oct', 'nov', 'déc'];
 
 export default defineComponent({
   name: 'DashboardView',
@@ -142,10 +132,8 @@ export default defineComponent({
   data() {
     return {
       analytics: null as AnalyticsData | null,
-      period: '7d' as '1d' | '7d' | '30d' | '1y' | 'all',
-      svgW: 400,
-      svgH: 140,
-      _resizeObserver: null as ResizeObserver | null,
+      period: '7d' as Period,
+      _chart: null as Chart<'line', number[], string> | null,
     };
   },
   computed: {
@@ -159,72 +147,130 @@ export default defineComponent({
       ];
     },
     periodLabel(): string {
-      const map: Record<string, string> = {
+      const map: Record<Period, string> = {
         '1d': "Aujourd'hui",
         '7d': '7 derniers jours',
         '30d': '30 derniers jours',
         '1y': '12 derniers mois',
         'all': 'Depuis le début',
       };
-      return map[this.period] ?? '';
-    },
-    chartPoints(): { x: number; y: number; label: string }[] {
-      const views = this.analytics?.views ?? [];
-      if (!views.length) return [];
-      const max = Math.max(...views.map(v => v.count));
-      if (max === 0) return [];
-      const n = views.length;
-      const isMonthly = this.period === '1y' || this.period === 'all';
-      const isHourly = this.period === '1d';
-      const MONTHS = ['jan', 'fév', 'mar', 'avr', 'mai', 'jun', 'jul', 'aoû', 'sep', 'oct', 'nov', 'déc'];
-      return views.map((v, i) => {
-        let label = '';
-        if (isHourly) {
-          label = i % 6 === 0 ? `${v.date}h` : '';
-        } else if (isMonthly) {
-          label = MONTHS[parseInt(v.date.slice(5, 7)) - 1];
-        } else {
-          label = v.date.slice(5);
-        }
-        return {
-          x: n > 1 ? (i / (n - 1)) * this.svgW : this.svgW / 2,
-          y: this.svgH - (v.count / max) * this.svgH,
-          label,
-        };
-      });
-    },
-    linePoints(): string {
-      return this.chartPoints.map(p => `${p.x},${p.y}`).join(' ');
-    },
-    areaPoints(): string {
-      if (!this.chartPoints.length) return '';
-      const line = this.chartPoints.map(p => `${p.x},${p.y}`).join(' ');
-      return `0,${this.svgH} ${line} ${this.svgW},${this.svgH}`;
-    },
-    gridLines(): number[] {
-      return [0, this.svgH * 0.33, this.svgH * 0.66, this.svgH];
+      return map[this.period];
     },
   },
   async mounted() {
     this.analytics = await api.get<AnalyticsData>(`/admin/analytics?period=${this.period}`);
     await this.$nextTick();
-    const container = this.$refs.chartContainer as HTMLElement | undefined;
-    if (container) {
-      const measure = () => { if (container.clientWidth) this.svgW = container.clientWidth; };
-      measure();
-      this._resizeObserver = new ResizeObserver(measure);
-      this._resizeObserver.observe(container);
-    }
+    this.initChart();
   },
   beforeUnmount() {
-    this._resizeObserver?.disconnect();
+    this._chart?.destroy();
   },
   methods: {
     initials,
     relTime(d: string): string { return relativeTime(d); },
+
+    cssVar(name: string): string {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    },
+
+    formatLabels(views: { date: string; count: number }[]): string[] {
+      if (this.period === '1d') return views.map(v => `${v.date}h`);
+      if (this.period === '1y' || this.period === 'all') {
+        return views.map(v => MONTHS[parseInt(v.date.slice(5, 7)) - 1]);
+      }
+      return views.map(v => v.date.slice(5));
+    },
+
+    initChart() {
+      const canvas = this.$refs.chartCanvas as HTMLCanvasElement | undefined;
+      if (!canvas) return;
+      this._chart?.destroy();
+
+      const views = this.analytics?.views ?? [];
+      const accent = this.cssVar('--color-accent');
+      const accentSoft = this.cssVar('--color-accent-soft');
+      const border = this.cssVar('--color-border');
+      const textMuted = this.cssVar('--color-text-muted');
+      const bgCard = this.cssVar('--color-bg-card');
+      const textPrimary = this.cssVar('--color-text-primary');
+
+      this._chart = markRaw(new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: this.formatLabels(views),
+          datasets: [{
+            data: views.map(v => v.count),
+            borderColor: accent,
+            backgroundColor: accentSoft,
+            fill: true,
+            tension: 0.35,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            pointBackgroundColor: accent,
+            pointBorderColor: bgCard,
+            pointBorderWidth: 2,
+            borderWidth: 2,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: bgCard,
+              titleColor: textMuted,
+              bodyColor: textPrimary,
+              borderColor: border,
+              borderWidth: 1,
+              padding: 10,
+              callbacks: {
+                label: (item) => {
+                  const n = item.raw as number;
+                  return ` ${n} visite${n !== 1 ? 's' : ''}`;
+                },
+              },
+            },
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              border: { display: false },
+              ticks: {
+                color: textMuted,
+                font: { size: 11 },
+                maxTicksLimit: this.period === '1d' ? 5 : 8,
+                maxRotation: 0,
+              },
+            },
+            y: {
+              beginAtZero: true,
+              border: { display: false, dash: [3, 3] },
+              grid: { color: border },
+              ticks: {
+                color: textMuted,
+                font: { size: 11 },
+                maxTicksLimit: 4,
+                precision: 0,
+              },
+            },
+          },
+        },
+      }));
+    },
+
     async setPeriod(p: string) {
-      this.period = p as '1d' | '7d' | '30d' | '1y' | 'all';
+      this.period = p as Period;
       this.analytics = await api.get<AnalyticsData>(`/admin/analytics?period=${p}`);
+      await this.$nextTick();
+      const views = this.analytics?.views ?? [];
+      if (this._chart) {
+        this._chart.data.labels = this.formatLabels(views);
+        this._chart.data.datasets[0].data = views.map(v => v.count);
+        (this._chart.options.scales!.x as any).ticks.maxTicksLimit = p === '1d' ? 5 : 8;
+        this._chart.update();
+      }
     },
   },
 });

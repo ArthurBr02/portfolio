@@ -16,7 +16,6 @@
 | Tailwind CSS ou tout framework CSS | Vanilla CSS + custom properties |
 | `<script setup>` / Composition API | Options API (`data()`, `methods`, `computed`, `watch`) |
 | GSAP, Motion for Vue, toute lib animation | CSS natif (`@keyframes`, transitions) |
-| Chart.js, D3 ou toute lib graphique | SVG ou Canvas maison |
 | `async/await` dans `backend/src/models/` | `better-sqlite3` est synchrone — appels directs |
 | Route d'inscription admin | Compte créé via `002_seed.sql` uniquement |
 
