@@ -32,6 +32,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { api } from '../../lib/api';
+import { loadRemoteTranslations } from '../../i18n';
 import AppToast from '../../components/ui/AppToast.vue';
 
 export default defineComponent({
@@ -48,6 +49,7 @@ export default defineComponent({
       this.saving = true;
       try {
         await api.put('/admin/translations', { lang: this.lang, entries: this.entries });
+        await loadRemoteTranslations(this.lang);
         this.toast = 'Traductions sauvegardées !';
       } finally { this.saving = false; }
     },
