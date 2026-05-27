@@ -1,0 +1,13 @@
+services:
+  portfolio:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data/database.sqlite:/app/database.sqlite
+      - ./data/uploads:/app/uploads
+    env_file:
+      - ../.env
+    restart: unless-stopped
