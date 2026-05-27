@@ -55,9 +55,17 @@ export function createProject(data: Omit<Project, 'id' | 'created_at' | 'images'
   return result.lastInsertRowid as number;
 }
 
+const PROJECT_COLUMNS = new Set([
+  'title_fr', 'title_en', 'description_fr', 'description_en',
+  'short_description_fr', 'short_description_en', 'image_url',
+  'demo_url', 'repo_url', 'technologies', 'category', 'sort_order',
+]);
+
 export function updateProject(id: number, data: Partial<Omit<Project, 'id' | 'created_at' | 'images'>>): void {
-  const fields = Object.keys(data).map(k => `${k} = ?`).join(', ');
-  db.prepare(`UPDATE projects SET ${fields} WHERE id = ?`).run(...Object.values(data), id);
+  const entries = Object.entries(data).filter(([k]) => PROJECT_COLUMNS.has(k));
+  if (!entries.length) return;
+  const fields = entries.map(([k]) => `${k} = ?`).join(', ');
+  db.prepare(`UPDATE projects SET ${fields} WHERE id = ?`).run(...entries.map(([, v]) => v), id);
 }
 
 export function deleteProject(id: number): void {

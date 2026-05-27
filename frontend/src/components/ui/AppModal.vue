@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="modelValue" class="modal-overlay" @click.self="close">
+    <div v-if="modelValue" class="modal-overlay" @mousedown.self="overlayMousedown = true" @mouseup.self="onOverlayMouseup">
       <div class="modal" role="dialog" :aria-label="title">
         <button class="modal-close" @click="close" aria-label="Fermer">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -25,6 +25,9 @@ export default defineComponent({
     title: { type: String, default: '' },
   },
   emits: ['update:modelValue'],
+  data() {
+    return { overlayMousedown: false };
+  },
   mounted() {
     window.addEventListener('keydown', this.onEscape);
   },
@@ -34,6 +37,10 @@ export default defineComponent({
   methods: {
     close() {
       this.$emit('update:modelValue', false);
+    },
+    onOverlayMouseup() {
+      if (this.overlayMousedown) this.close();
+      this.overlayMousedown = false;
     },
     onEscape(e: KeyboardEvent) {
       if (e.key === 'Escape' && this.modelValue) this.close();

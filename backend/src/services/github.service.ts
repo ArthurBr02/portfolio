@@ -7,9 +7,20 @@ interface GithubRepo {
   homepage: string | null;
   topics: string[];
   language: string | null;
+  default_branch: string;
 }
 
 interface GithubReadme {
+  content: string;
+  encoding: string;
+}
+
+interface GithubTree {
+  tree: { path: string; type: string }[];
+  truncated: boolean;
+}
+
+interface GithubContent {
   content: string;
   encoding: string;
 }
@@ -50,10 +61,94 @@ function truncate(str: string, max: number): string {
   return str.slice(0, max) + '…';
 }
 
-function detectCategory(topics: string[], language: string | null): string {
-  const all = [...topics, language || ''].map(t => t.toLowerCase());
-  if (all.some(t => ['android', 'ios', 'react-native', 'flutter', 'mobile', 'swift', 'kotlin'].includes(t))) return 'mobile';
-  if (all.some(t => ['cli', 'tool', 'devtool', 'automation', 'script', 'library', 'npm'].includes(t))) return 'tools';
+const NOTABLE_CONFIGS = new Set([
+  'package.json', 'yarn.lock', 'pnpm-lock.yaml',
+  'requirements.txt', 'Pipfile', 'pyproject.toml', 'setup.py', 'setup.cfg',
+  'Cargo.toml', 'go.mod',
+  'pom.xml', 'build.gradle', 'build.gradle.kts',
+  'composer.json', 'Gemfile', 'mix.exs',
+  'Dockerfile', 'docker-compose.yml', 'docker-compose.yaml',
+  'Makefile', 'CMakeLists.txt',
+  'tsconfig.json', 'jsconfig.json',
+  'vite.config.ts', 'vite.config.js', 'webpack.config.js',
+  'next.config.js', 'next.config.ts', 'nuxt.config.ts',
+  'angular.json', 'svelte.config.js', 'astro.config.mjs',
+  'tailwind.config.js', 'tailwind.config.ts',
+  '.eslintrc.json', '.eslintrc.js',
+  'pubspec.yaml',
+]);
+
+async function fetchRepoTree(owner: string, repo: string, branch: string): Promise<string[]> {
+  try {
+    const data = await fetchGithub<GithubTree>(
+      `/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`
+    );
+    return data.tree
+      .filter(item => item.type === 'blob')
+      .map(item => item.path)
+      .slice(0, 1000);
+  } catch {
+    return [];
+  }
+}
+
+function analyzeTree(paths: string[]): { extensions: string[]; configFiles: string[]; rootDirs: string[] } {
+  const extCount: Record<string, number> = {};
+  const configFiles: string[] = [];
+  const rootDirsSet = new Set<string>();
+
+  for (const path of paths) {
+    const parts = path.split('/');
+    if (parts.length > 1) rootDirsSet.add(parts[0]);
+
+    const filename = parts[parts.length - 1];
+    if (parts.length === 1 && NOTABLE_CONFIGS.has(filename)) configFiles.push(filename);
+
+    const dotIdx = filename.lastIndexOf('.');
+    if (dotIdx > 0) {
+      const ext = filename.slice(dotIdx + 1).toLowerCase();
+      if (ext.length >= 1 && ext.length <= 6 && !/^(lock|sum|snap|min)$/.test(ext)) {
+        extCount[ext] = (extCount[ext] || 0) + 1;
+      }
+    }
+  }
+
+  const extensions = Object.entries(extCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 12)
+    .map(([ext]) => ext);
+
+  return { extensions, configFiles, rootDirs: Array.from(rootDirsSet).slice(0, 20) };
+}
+
+async function fetchManifest(owner: string, repo: string): Promise<string> {
+  const candidates = [
+    { path: '/package.json', label: 'package.json' },
+    { path: '/requirements.txt', label: 'requirements.txt' },
+    { path: '/Cargo.toml', label: 'Cargo.toml' },
+    { path: '/go.mod', label: 'go.mod' },
+    { path: '/pyproject.toml', label: 'pyproject.toml' },
+    { path: '/pom.xml', label: 'pom.xml' },
+    { path: '/composer.json', label: 'composer.json' },
+    { path: '/pubspec.yaml', label: 'pubspec.yaml' },
+  ];
+
+  for (const { path, label } of candidates) {
+    try {
+      const data = await fetchGithub<GithubContent>(`/repos/${owner}/${repo}/contents${path}`);
+      const content = truncate(decodeBase64(data.content), 2000);
+      return `=== ${label} ===\n${content}`;
+    } catch {
+      continue;
+    }
+  }
+  return '';
+}
+
+function detectCategory(topics: string[], language: string | null, extensions: string[]): string {
+  const all = [...topics, language || '', ...extensions].map(t => t.toLowerCase());
+  if (all.some(t => ['android', 'ios', 'react-native', 'flutter', 'mobile', 'swift', 'kotlin', 'dart'].includes(t))) return 'mobile';
+  if (all.some(t => ['cli', 'tool', 'devtool', 'automation', 'script', 'library', 'npm', 'sh', 'bash'].includes(t))) return 'tools';
   return 'web';
 }
 
@@ -70,7 +165,6 @@ async function callLLM(prompt: string): Promise<string> {
     : 'https://openrouter.ai/api/v1/chat/completions';
 
   const apiKey = useMistral ? env.MISTRAL_API_KEY : env.OPENROUTER_API_KEY;
-
   const model = env.AI_MODEL || (useMistral ? 'mistral-small-latest' : 'mistralai/mistral-small-3.1-24b-instruct:free');
 
   const headers: Record<string, string> = {
@@ -105,13 +199,17 @@ export async function importFromGithub(repoUrl: string): Promise<ImportedProject
 
   const { owner, repo } = parsed;
 
-  const [repoData, readmeData] = await Promise.all([
-    fetchGithub<GithubRepo>(`/repos/${owner}/${repo}`),
+  const repoData = await fetchGithub<GithubRepo>(`/repos/${owner}/${repo}`);
+
+  const [readmeData, treePaths, manifest] = await Promise.all([
     fetchGithub<GithubReadme>(`/repos/${owner}/${repo}/readme`).catch(() => null),
+    fetchRepoTree(owner, repo, repoData.default_branch),
+    fetchManifest(owner, repo),
   ]);
 
-  const readme = readmeData ? truncate(decodeBase64(readmeData.content), 3000) : '';
-  const category = detectCategory(repoData.topics, repoData.language);
+  const readme = readmeData ? truncate(decodeBase64(readmeData.content), 2000) : '';
+  const { extensions, configFiles, rootDirs } = analyzeTree(treePaths);
+  const category = detectCategory(repoData.topics, repoData.language, extensions);
 
   const prompt = `Tu es un assistant qui génère des fiches de projets pour un portfolio de développeur.
 
@@ -119,9 +217,14 @@ Voici les informations d'un repo GitHub :
 - Nom : ${repoData.name}
 - Description : ${repoData.description || 'Aucune'}
 - Langage principal : ${repoData.language || 'Non spécifié'}
-- Topics : ${repoData.topics.join(', ') || 'Aucun'}
-- README (extrait) :
-${readme || 'Pas de README disponible'}
+- Topics GitHub : ${repoData.topics.join(', ') || 'Aucun'}
+- Extensions de fichiers présentes (par fréquence) : ${extensions.join(', ') || 'Aucune'}
+- Fichiers de config/manifeste détectés : ${configFiles.join(', ') || 'Aucun'}
+- Dossiers racine : ${rootDirs.join(', ') || 'Aucun'}
+- Nombre total de fichiers analysés : ${treePaths.length}
+
+${manifest ? `Contenu du manifeste de dépendances :\n${manifest}\n` : ''}
+${readme ? `README (extrait) :\n${readme}` : 'Pas de README disponible'}
 
 Génère une fiche projet en JSON avec exactement ces champs :
 {
@@ -131,7 +234,7 @@ Génère une fiche projet en JSON avec exactement ces champs :
   "short_description_en": "Short description in English (1-2 sentences, max 120 chars)",
   "description_fr": "Description longue en français (3-5 phrases, présente le projet, ses fonctionnalités et technologies clés)",
   "description_en": "Long description in English (3-5 sentences)",
-  "technologies": "Tableau JSON des technologies comme chaîne, ex: \\"[\\"Vue 3\\",\\"Node.js\\",\\"SQLite\\"]\\"",
+  "technologies": "Tableau JSON stringifié des technologies, ex: \\"[\\"Vue 3\\",\\"Node.js\\",\\"SQLite\\"]\\". Déduis les techno réelles depuis les extensions, config files et dépendances — sois précis et exhaustif."
 }
 
 Réponds UNIQUEMENT avec le JSON, sans texte supplémentaire.`;
