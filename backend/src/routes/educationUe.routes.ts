@@ -10,6 +10,7 @@ const ueSchema = z.object({
   semester: z.string().optional().nullable(),
   code: z.string().optional().nullable(),
   name: z.string().min(1),
+  description: z.string().optional().nullable(),
   sort_order: z.number().int().optional(),
 });
 

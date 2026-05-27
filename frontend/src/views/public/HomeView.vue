@@ -32,6 +32,7 @@
       :education="education"
       :show-exp="settings.isSectionEnabled('experience')"
       :show-edu="settings.isSectionEnabled('education')"
+      :show-ue="settings.isSectionEnabled('education_ue')"
       :locale="locale"
     />
 

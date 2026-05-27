@@ -50,7 +50,7 @@
       </div>
     </div>
 
-    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-top: 0">
+    <div class="dash-main-grid">
 
       <div class="panel">
         <div class="panel-head">

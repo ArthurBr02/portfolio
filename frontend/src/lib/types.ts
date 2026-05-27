@@ -70,6 +70,7 @@ export interface EducationUe {
   semester: string | null;
   code: string | null;
   name: string;
+  description: string | null;
   sort_order: number;
 }
 

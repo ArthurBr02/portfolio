@@ -6,6 +6,7 @@ export interface EducationUe {
   semester: string | null;
   code: string | null;
   name: string;
+  description: string | null;
   sort_order: number;
 }
 
@@ -15,9 +16,9 @@ export function getAllUeByEducation(educationId: number): EducationUe[] {
 
 export function createUe(data: Omit<EducationUe, 'id'>): number {
   const result = db.prepare(`
-    INSERT INTO education_ue (education_id, semester, code, name, sort_order)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(data.education_id, data.semester, data.code, data.name, data.sort_order ?? 0);
+    INSERT INTO education_ue (education_id, semester, code, name, description, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(data.education_id, data.semester, data.code, data.name, data.description ?? null, data.sort_order ?? 0);
   return result.lastInsertRowid as number;
 }
 

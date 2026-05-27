@@ -45,6 +45,7 @@ function runSeed() {
     ['section_projects_enabled', 'true'],
     ['section_experience_enabled', 'true'],
     ['section_education_enabled', 'true'],
+    ['section_education_ue_enabled', 'true'],
     ['section_contact_enabled', 'true'],
     ['site_title', 'Mon Portfolio'],
     ['active_theme', 'sable'],

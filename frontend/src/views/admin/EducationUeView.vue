@@ -2,42 +2,63 @@
   <div>
     <div class="admin-page-head">
       <div><h1>Unités d'enseignement</h1><p>{{ totalCount }} UE au total</p></div>
-      <button class="btn btn-primary" @click="() => openCreate()">+ Nouvelle UE</button>
+      <div style="display:flex;gap:.75rem;align-items:center">
+        <input v-model="search" type="search" placeholder="Filtrer…" style="width:200px" />
+        <button class="btn btn-primary" @click="() => openCreate()">+ Nouvelle UE</button>
+      </div>
     </div>
 
-    <div v-if="!educations.length" class="panel" style="text-align:center;color:var(--color-text-muted);padding:2rem">
-      Aucune formation trouvée
+    <div v-if="!educations.length" class="panel">
+      <div class="panel-body" style="text-align:center;color:var(--color-text-muted)">Aucune formation trouvée</div>
     </div>
 
-    <template v-for="edu in educations" :key="edu.id">
+    <template v-for="edu in filteredEducations" :key="edu.id">
       <div class="panel" style="margin-bottom:1.25rem">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <div class="panel-head">
           <div>
-            <strong>{{ edu.degree_fr }}</strong>
-            <span style="color:var(--color-text-muted);margin-left:.5rem;font-size:.85rem">{{ edu.school }}</span>
+            <h2>{{ edu.degree_fr }}</h2>
+            <p>{{ edu.school }}</p>
           </div>
-          <button class="btn btn-ghost" style="font-size:.82rem" @click="openCreate(edu.id)">+ Ajouter une UE</button>
+          <button class="btn btn-ghost" @click="openCreate(edu.id)">+ Ajouter une UE</button>
         </div>
 
-        <table class="tbl" v-if="ueByEducation[edu.id] && ueByEducation[edu.id].length">
-          <thead><tr><th>Semestre</th><th>Code</th><th>Nom</th><th style="text-align:right">Actions</th></tr></thead>
+        <table class="tbl" v-if="filteredUe(edu.id).length">
+          <thead>
+            <tr>
+              <th>Semestre</th>
+              <th>Code</th>
+              <th>Nom</th>
+              <th>Description</th>
+              <th style="text-align:right">Actions</th>
+            </tr>
+          </thead>
           <tbody>
-            <tr v-for="ue in ueByEducation[edu.id]" :key="ue.id">
-              <td style="font-family:ui-monospace,monospace;font-size:.82rem">{{ ue.semester || '—' }}</td>
-              <td style="font-family:ui-monospace,monospace;font-size:.82rem">{{ ue.code || '—' }}</td>
-              <td>{{ ue.name }}</td>
+            <tr v-for="ue in filteredUe(edu.id)" :key="ue.id">
+              <td style="font-family:ui-monospace,monospace;font-size:.82rem;white-space:nowrap">{{ ue.semester || '—' }}</td>
+              <td style="font-family:ui-monospace,monospace;font-size:.82rem;white-space:nowrap">{{ ue.code || '—' }}</td>
+              <td><strong>{{ ue.name }}</strong></td>
+              <td style="color:var(--color-text-secondary);font-size:.88rem;max-width:320px">
+                <span v-if="ue.description">{{ ue.description }}</span>
+                <span v-else style="color:var(--color-text-muted)">—</span>
+              </td>
               <td>
                 <div class="tbl-actions">
                   <button class="btn-icon" @click="openEdit(ue)"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M10 2l2 2-8 8H2v-2L10 2z" stroke="currentColor" stroke-width="1.5"/></svg></button>
-                  <button class="btn-icon" @click="remove(ue.id, edu.id)"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M5 4V2h4v2M3 4l1 8h6l1-8" stroke="currentColor" stroke-width="1.5"/></svg></button>
+                  <button class="btn-icon" @click="remove(ue.id)"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M5 4V2h4v2M3 4l1 8h6l1-8" stroke="currentColor" stroke-width="1.5"/></svg></button>
                 </div>
               </td>
             </tr>
           </tbody>
         </table>
-        <p v-else style="font-size:.85rem;color:var(--color-text-muted);margin:0">Aucune UE pour cette formation.</p>
+        <div v-else class="panel-body" style="color:var(--color-text-muted);font-size:.88rem">
+          Aucune UE pour cette formation.
+        </div>
       </div>
     </template>
+
+    <div v-if="educations.length && !filteredEducations.length" class="panel">
+      <div class="panel-body" style="text-align:center;color:var(--color-text-muted)">Aucun résultat pour "{{ search }}"</div>
+    </div>
 
     <AppModal v-model="showModal" title="Unité d'enseignement">
       <h3 style="margin-bottom:1.5rem">{{ editing ? 'Modifier' : 'Nouvelle' }} UE</h3>
@@ -53,6 +74,10 @@
           <div><label class="field-label">Code</label><input v-model="form.code" placeholder="UF 8.1" /></div>
         </div>
         <div><label class="field-label">Nom</label><input v-model="form.name" placeholder="Conduite de projet" /></div>
+        <div>
+          <label class="field-label">Description (ce que j'ai fait)</label>
+          <textarea v-model="form.description" rows="3" placeholder="Ex : Réalisation d'un rapport de projet, présentation orale…" />
+        </div>
         <div style="display:flex;justify-content:flex-end;gap:.75rem;margin-top:.5rem">
           <button class="btn btn-ghost" @click="showModal = false">Annuler</button>
           <button class="btn btn-primary" @click="saveItem" :disabled="saving || !form.name">{{ saving ? '…' : 'Sauvegarder' }}</button>
@@ -75,6 +100,7 @@ const emptyForm = (educationId = 0) => ({
   semester: '' as string | null,
   code: '' as string | null,
   name: '',
+  description: '' as string | null,
   sort_order: 0,
 });
 
@@ -86,6 +112,7 @@ export default defineComponent({
     return {
       educations: [] as Education[],
       ueByEducation: {} as Record<number, EducationUe[]>,
+      search: '',
       showModal: false,
       editing: null as EducationUe | null,
       form: emptyForm(),
@@ -98,6 +125,10 @@ export default defineComponent({
     totalCount(): number {
       return Object.values(this.ueByEducation).reduce((sum, list) => sum + list.length, 0);
     },
+    filteredEducations(): Education[] {
+      if (!this.search.trim()) return this.educations;
+      return this.educations.filter(edu => this.filteredUe(edu.id).length > 0);
+    },
   },
 
   async mounted() {
@@ -108,13 +139,23 @@ export default defineComponent({
     async load() {
       this.educations = await api.get<Education[]>('/education');
       const results = await Promise.all(
-        this.educations.map(edu =>
-          api.get<EducationUe[]>(`/admin/education/${edu.id}/ue`)
-        )
+        this.educations.map(edu => api.get<EducationUe[]>(`/admin/education/${edu.id}/ue`))
       );
       const map: Record<number, EducationUe[]> = {};
       this.educations.forEach((edu, i) => { map[edu.id] = results[i]; });
       this.ueByEducation = map;
+    },
+
+    filteredUe(educationId: number): EducationUe[] {
+      const list = this.ueByEducation[educationId] || [];
+      const q = this.search.toLowerCase().trim();
+      if (!q) return list;
+      return list.filter(ue =>
+        (ue.name || '').toLowerCase().includes(q) ||
+        (ue.code || '').toLowerCase().includes(q) ||
+        (ue.semester || '').toLowerCase().includes(q) ||
+        (ue.description || '').toLowerCase().includes(q)
+      );
     },
 
     openCreate(educationId = 0) {
@@ -145,7 +186,7 @@ export default defineComponent({
       }
     },
 
-    async remove(id: number, educationId: number) {
+    async remove(id: number) {
       if (!confirm('Supprimer cette UE ?')) return;
       await api.delete(`/admin/education-ue/${id}`);
       await this.load();

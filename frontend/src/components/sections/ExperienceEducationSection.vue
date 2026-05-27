@@ -35,12 +35,16 @@
               <div class="timeline-title">{{ locale === 'en' ? edu.degree_en : edu.degree_fr }}</div>
               <div class="timeline-company">{{ edu.school }}</div>
               <div class="timeline-desc">{{ locale === 'en' ? edu.description_en : edu.description_fr }}</div>
-              <div class="edu-ue-list" v-if="edu.ue && edu.ue.length">
+              <div class="edu-ue-list" v-if="showUe && edu.ue && edu.ue.length">
                 <template v-for="group in groupedBySemester(edu.ue)" :key="group.name">
                   <p class="edu-ue-semester" v-if="group.name">{{ group.name }}</p>
                   <ul>
                     <li v-for="ue in group.items" :key="ue.id">
-                      <span class="edu-ue-code" v-if="ue.code">{{ ue.code }}</span>{{ ue.name }}
+                      <span class="edu-ue-code" v-if="ue.code">{{ ue.code }}</span>
+                      <span>
+                        {{ ue.name }}
+                        <span class="edu-ue-desc" v-if="ue.description"> — {{ ue.description }}</span>
+                      </span>
                     </li>
                   </ul>
                 </template>
@@ -67,6 +71,7 @@ export default defineComponent({
     education: { type: Array as () => Education[], default: () => [] },
     showExp: { type: Boolean, default: true },
     showEdu: { type: Boolean, default: true },
+    showUe: { type: Boolean, default: true },
     locale: { type: String, default: 'fr' },
   },
   methods: {

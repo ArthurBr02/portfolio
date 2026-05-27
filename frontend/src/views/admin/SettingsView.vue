@@ -169,6 +169,7 @@ export default defineComponent({
         { key: 'section_projects_enabled', label: 'Projets', desc: 'Vos réalisations' },
         { key: 'section_experience_enabled', label: 'Expériences', desc: 'Votre parcours professionnel' },
         { key: 'section_education_enabled', label: 'Formation', desc: 'Votre parcours académique' },
+        { key: 'section_education_ue_enabled', label: 'UE dans Formation', desc: 'Afficher les unités d\'enseignement sous chaque formation' },
         { key: 'section_contact_enabled', label: 'Contact', desc: 'Formulaire de contact' },
       ],
     };
