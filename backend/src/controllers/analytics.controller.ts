@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import crypto from 'crypto';
-import { trackPageView, getAnalytics, getAnalyticsSummary } from '../models/analytics.model';
+import { trackPageView, getAnalytics, getAnalyticsSummary, type AnalyticsPeriod } from '../models/analytics.model';
 import { getAllMessages } from '../models/messages.model';
 import { getAllProjects } from '../models/projects.model';
 import { getAllExperiences } from '../models/experiences.model';
@@ -15,8 +15,9 @@ export function trackController(req: Request, res: Response) {
 }
 
 export function analyticsController(req: Request, res: Response) {
-  const days = Number(req.query.days) || 7;
-  const views = getAnalytics(days);
+  const PERIODS = ['1d', '7d', '30d', '1y', 'all'];
+  const period = (PERIODS.includes(req.query.period as string) ? req.query.period : '7d') as AnalyticsPeriod;
+  const views = getAnalytics(period);
   const summary = getAnalyticsSummary();
   const messages = getAllMessages();
   const projects = getAllProjects();

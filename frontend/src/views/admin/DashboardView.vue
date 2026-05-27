@@ -56,7 +56,15 @@
         <div class="panel-head">
           <div>
             <h2>Visites</h2>
-            <p>7 derniers jours</p>
+            <p>{{ periodLabel }}</p>
+          </div>
+          <div class="filter-tabs">
+            <button
+              v-for="p in periods"
+              :key="p.value"
+              :class="['filter-tab', { active: period === p.value }]"
+              @click="setPeriod(p.value)"
+            >{{ p.label }}</button>
           </div>
         </div>
         <div class="panel-body">
@@ -134,21 +142,55 @@ export default defineComponent({
   data() {
     return {
       analytics: null as AnalyticsData | null,
+      period: '7d' as '1d' | '7d' | '30d' | '1y' | 'all',
       svgW: 400,
       svgH: 140,
       _resizeObserver: null as ResizeObserver | null,
     };
   },
   computed: {
+    periods(): { value: string; label: string }[] {
+      return [
+        { value: '1d', label: '1j' },
+        { value: '7d', label: '7j' },
+        { value: '30d', label: '30j' },
+        { value: '1y', label: '1an' },
+        { value: 'all', label: 'Tout' },
+      ];
+    },
+    periodLabel(): string {
+      const map: Record<string, string> = {
+        '1d': "Aujourd'hui",
+        '7d': '7 derniers jours',
+        '30d': '30 derniers jours',
+        '1y': '12 derniers mois',
+        'all': 'Depuis le début',
+      };
+      return map[this.period] ?? '';
+    },
     chartPoints(): { x: number; y: number; label: string }[] {
       const views = this.analytics?.views ?? [];
       if (!views.length) return [];
+      const n = views.length;
       const max = Math.max(...views.map(v => v.count), 1);
-      return views.map((v, i) => ({
-        x: (i / (views.length - 1)) * this.svgW,
-        y: this.svgH - (v.count / max) * this.svgH,
-        label: v.date.slice(5),
-      }));
+      const isMonthly = this.period === '1y' || this.period === 'all';
+      const isHourly = this.period === '1d';
+      const MONTHS = ['jan', 'fév', 'mar', 'avr', 'mai', 'jun', 'jul', 'aoû', 'sep', 'oct', 'nov', 'déc'];
+      return views.map((v, i) => {
+        let label = '';
+        if (isHourly) {
+          label = i % 6 === 0 ? `${v.date}h` : '';
+        } else if (isMonthly) {
+          label = MONTHS[parseInt(v.date.slice(5, 7)) - 1];
+        } else {
+          label = v.date.slice(5);
+        }
+        return {
+          x: n > 1 ? (i / (n - 1)) * this.svgW : this.svgW / 2,
+          y: this.svgH - (v.count / max) * this.svgH,
+          label,
+        };
+      });
     },
     linePoints(): string {
       return this.chartPoints.map(p => `${p.x},${p.y}`).join(' ');
@@ -163,7 +205,7 @@ export default defineComponent({
     },
   },
   async mounted() {
-    this.analytics = await api.get<AnalyticsData>('/admin/analytics');
+    this.analytics = await api.get<AnalyticsData>(`/admin/analytics?period=${this.period}`);
     await this.$nextTick();
     const container = this.$refs.chartContainer as HTMLElement | undefined;
     if (container) {
@@ -179,6 +221,10 @@ export default defineComponent({
   methods: {
     initials,
     relTime(d: string): string { return relativeTime(d); },
+    async setPeriod(p: string) {
+      this.period = p as '1d' | '7d' | '30d' | '1y' | 'all';
+      this.analytics = await api.get<AnalyticsData>(`/admin/analytics?period=${p}`);
+    },
   },
 });
 </script>
