@@ -46,7 +46,7 @@
           </div>
         </div>
         <div class="stat-card-num">{{ analytics?.activeSections ?? 0 }}</div>
-        <div class="stat-card-foot">/ 7 sections</div>
+        <div class="stat-card-foot">/ 8 sections</div>
       </div>
     </div>
 
