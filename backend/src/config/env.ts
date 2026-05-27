@@ -14,7 +14,8 @@ const envSchema = z.object({
   SMTP_USER: z.string().default(''),
   SMTP_PASS: z.string().default(''),
   OPENROUTER_API_KEY: z.string().default(''),
-  AI_MODEL: z.string().default('mistralai/mistral-small-3.1-24b-instruct:free'),
+  MISTRAL_API_KEY: z.string().default(''),
+  AI_MODEL: z.string().default(''),
   DB_PATH: z.string().default(''),
   UPLOADS_DIR: z.string().default(''),
 });

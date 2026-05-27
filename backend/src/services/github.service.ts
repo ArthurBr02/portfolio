@@ -58,17 +58,32 @@ function detectCategory(topics: string[], language: string | null): string {
 }
 
 async function callLLM(prompt: string): Promise<string> {
-  if (!env.OPENROUTER_API_KEY) throw new Error('OPENROUTER_API_KEY non configurée dans .env');
+  const useMistral = !!env.MISTRAL_API_KEY;
+  const useOpenRouter = !!env.OPENROUTER_API_KEY;
 
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  if (!useMistral && !useOpenRouter) {
+    throw new Error('Aucune clé LLM configurée (MISTRAL_API_KEY ou OPENROUTER_API_KEY)');
+  }
+
+  const url = useMistral
+    ? 'https://api.mistral.ai/v1/chat/completions'
+    : 'https://openrouter.ai/api/v1/chat/completions';
+
+  const apiKey = useMistral ? env.MISTRAL_API_KEY : env.OPENROUTER_API_KEY;
+
+  const model = env.AI_MODEL || (useMistral ? 'mistral-small-latest' : 'mistralai/mistral-small-3.1-24b-instruct:free');
+
+  const headers: Record<string, string> = {
+    'Authorization': `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+  };
+  if (!useMistral) headers['HTTP-Referer'] = 'https://portfolio-admin';
+
+  const res = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://portfolio-admin',
-    },
+    headers,
     body: JSON.stringify({
-      model: env.AI_MODEL,
+      model,
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
       temperature: 0.3,
@@ -77,7 +92,7 @@ async function callLLM(prompt: string): Promise<string> {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as Record<string, unknown>;
-    throw new Error(`OpenRouter error: ${res.status} — ${JSON.stringify(err)}`);
+    throw new Error(`LLM error (${useMistral ? 'Mistral' : 'OpenRouter'}): ${res.status} — ${JSON.stringify(err)}`);
   }
 
   const data = await res.json() as { choices: { message: { content: string } }[] };
